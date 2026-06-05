@@ -1,4 +1,11 @@
 export function buildGenericPushMessage(data = {}) {
+  if (typeof data.title === 'string' && typeof data.body === 'string') {
+    return {
+      title: data.title,
+      body: data.body
+    };
+  }
+
   switch (data.kind) {
     case 'dday':
       return {

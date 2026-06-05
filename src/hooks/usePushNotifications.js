@@ -68,7 +68,11 @@ export function usePushNotifications({ coupleId, uid, toast }) {
       }
 
       unsub = onMessage(messaging, (payload) => {
-        const message = buildGenericPushMessage(payload?.data || {});
+        const message = buildGenericPushMessage({
+          title: payload?.notification?.title,
+          body: payload?.notification?.body,
+          ...(payload?.data || {})
+        });
         toast(message.body);
       });
     }
