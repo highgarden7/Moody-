@@ -942,7 +942,7 @@ strong {
 }
 
 .bucket-toggle {
-  width: 100%;
+  justify-self: start;
 }
 
 .bucket-note {
