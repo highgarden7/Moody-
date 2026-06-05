@@ -1,0 +1,23 @@
+{
+  "name": "Moody",
+  "short_name": "Moody",
+  "description": "커플 둘만 쓰는 일정과 컨디션 캘린더",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4ede4",
+  "theme_color": "#f4ede4",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-mask.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
