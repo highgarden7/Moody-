@@ -185,6 +185,7 @@ textarea:focus {
 .auth-paper {
   margin-top: -24px;
   padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 .landing-card {
@@ -196,6 +197,7 @@ textarea:focus {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 .auth-card-scroll::-webkit-scrollbar {
