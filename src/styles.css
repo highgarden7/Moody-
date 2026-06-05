@@ -27,10 +27,17 @@
 
 * {
   box-sizing: border-box;
+  -webkit-touch-callout: none;
 }
 
 html,
-body,
+body {
+  min-height: 100%;
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 #root {
   min-height: 100%;
 }
@@ -443,6 +450,7 @@ strong {
   width: 100%;
   display: flex;
   gap: 8px;
+  margin: 0;
   padding: 0;
   background: transparent;
   box-sizing: border-box;
@@ -458,6 +466,10 @@ strong {
 
 .signup-paths button {
   flex: 1;
+}
+
+.auth-toggle-spacer {
+  margin-bottom: 8px;
 }
 
 .auth-form-stack {

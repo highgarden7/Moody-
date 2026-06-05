@@ -134,7 +134,7 @@ export default function AuthScreen() {
           </div>
         ) : null}
 
-        <div className="segmented auth-toggle-group">
+        <div className="segmented auth-toggle-group auth-toggle-spacer">
           <button
             className={mode === 'signin' ? 'active' : ''}
             onClick={() => setMode('signin')}
@@ -155,7 +155,7 @@ export default function AuthScreen() {
 
         <form className="stack auth-form-stack" onSubmit={handleSubmit}>
           {mode === 'signup' ? (
-            <div className="segmented auth-toggle-group signup-paths">
+            <div className="segmented auth-toggle-group auth-toggle-spacer signup-paths">
               <button
                 className={signupPath === 'founder' ? 'active' : ''}
                 onClick={() => setSignupPath('founder')}
