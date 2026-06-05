@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { addEvent, editEvent, eventsForDate, removeEvent } from '../hooks/useCoupleData';
+import { addEvent, editEvent, eventsForDate, removeEvent, saveMood } from '../hooks/useCoupleData';
 import {
   addDays,
   addMonths,
@@ -15,6 +15,16 @@ import {
 } from '../lib/date';
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+const MOOD_OPTIONS = [
+  { emoji: '😀', label: '좋음' },
+  { emoji: '🥰', label: '설렘' },
+  { emoji: '😮‍💨', label: '기빨림' },
+  { emoji: '😵', label: '과부하' },
+  { emoji: '😴', label: '졸림' },
+  { emoji: '🔥', label: '의욕' },
+  { emoji: '🤯', label: '야근각' },
+  { emoji: '🌧️', label: '다운' }
+];
 
 export default function CalendarSection({
   coupleId,
@@ -31,6 +41,9 @@ export default function CalendarSection({
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [eventForm, setEventForm] = useState(makeDefaultEventForm(new Date(), currentUser.uid));
+  const [showMoodForm, setShowMoodForm] = useState(false);
+  const [moodForm, setMoodForm] = useState({ emoji: '😀', note: '' });
+  const [moodBusy, setMoodBusy] = useState(false);
 
   const visibleDays = useMemo(
     () => (viewMode === 'month' ? buildMonthGrid(cursorDate) : buildWeekDays(cursorDate)),
@@ -42,7 +55,9 @@ export default function CalendarSection({
     [events, selectedDate]
   );
 
-  const selectedDayMoods = moods[toDateInputValue(selectedDate)] || {};
+  const selectedDateKey = toDateInputValue(selectedDate);
+  const selectedDayMoods = moods[selectedDateKey] || {};
+  const myMood = selectedDayMoods[currentUser.uid];
 
   function handleMove(direction) {
     setCursorDate((current) =>
@@ -55,6 +70,27 @@ export default function CalendarSection({
     setEventForm(makeDefaultEventForm(date, currentUser.uid));
     setEditingEventId(null);
     setShowForm(false);
+    setShowMoodForm(false);
+  }
+
+  function openMoodForm() {
+    setMoodForm(myMood || { emoji: '😀', note: '' });
+    setShowMoodForm(true);
+  }
+
+  async function handleSaveMood(event) {
+    event.preventDefault();
+    setMoodBusy(true);
+
+    try {
+      await saveMood(coupleId, currentUser.uid, selectedDateKey, moodForm);
+      toast('컨디션을 저장했어.');
+      setShowMoodForm(false);
+    } catch (error) {
+      toast(error.message || '컨디션 저장에 실패했어.');
+    } finally {
+      setMoodBusy(false);
+    }
   }
 
   function openCreateForm() {
@@ -266,6 +302,55 @@ export default function CalendarSection({
             ))}
           </div>
         )}
+      </section>
+
+      <section className="panel paper-card">
+        <div className="summary-row summary-row-spread">
+          <h3>컨디션</h3>
+          {showMoodForm ? (
+            <button className="btn-secondary" onClick={() => setShowMoodForm(false)} type="button">
+              닫기
+            </button>
+          ) : (
+            <button className="btn-secondary" onClick={openMoodForm} type="button">
+              {myMood ? '컨디션 수정' : '+ 컨디션 추가'}
+            </button>
+          )}
+        </div>
+
+        {showMoodForm ? (
+          <>
+            <div className="mood-grid">
+              {MOOD_OPTIONS.map((option) => (
+                <button
+                  className={['mood-option', moodForm.emoji === option.emoji ? 'selected' : ''].join(' ')}
+                  key={option.emoji}
+                  onClick={() => setMoodForm((current) => ({ ...current, emoji: option.emoji }))}
+                  type="button"
+                >
+                  <span>{option.emoji}</span>
+                  <span>{option.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <form className="stack mood-form" onSubmit={handleSaveMood}>
+              <label className="field">
+                <span>짧은 메모</span>
+                <textarea
+                  maxLength={80}
+                  onChange={(event) => setMoodForm((current) => ({ ...current, note: event.target.value }))}
+                  placeholder="오늘은 좀 지침, 퇴근 뒤엔 괜찮을 듯"
+                  rows={3}
+                  value={moodForm.note}
+                />
+              </label>
+              <button className="btn-primary" disabled={moodBusy} type="submit">
+                저장
+              </button>
+            </form>
+          </>
+        ) : null}
       </section>
 
       <section className="panel paper-card">

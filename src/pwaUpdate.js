@@ -63,3 +63,46 @@ export function initPwaUpdate() {
 export function usePwaUpdate() {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
+
+let controllerChangeBound = false;
+
+// 서버에 새 버전(서비스워커)이 있는지 확인하고, 있으면 적용한다.
+// sw.js가 skipWaiting + clientsClaim을 하므로 새 SW가 곧바로 활성화되며
+// controllerchange가 발생하면 한 번만 리로드해 최신 화면으로 갱신한다.
+// 새 버전이 없으면 아무 일도 하지 않는다(리로드 없음).
+export async function checkAndApplyAppUpdate() {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return false;
+  }
+
+  const sw = navigator.serviceWorker;
+
+  if (!controllerChangeBound) {
+    controllerChangeBound = true;
+    let reloaded = false;
+    sw.addEventListener('controllerchange', () => {
+      if (reloaded) {
+        return;
+      }
+      reloaded = true;
+      window.location.reload();
+    });
+  }
+
+  try {
+    const registration = await sw.getRegistration();
+    if (!registration) {
+      return false;
+    }
+
+    await registration.update();
+
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+
+    return Boolean(registration.installing || registration.waiting);
+  } catch {
+    return false;
+  }
+}

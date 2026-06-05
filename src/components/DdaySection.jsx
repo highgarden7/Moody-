@@ -81,20 +81,6 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
       </div>
 
       <section className="panel paper-card">
-        <div className="dday-list">
-          {items.map((item) => (
-            <article className="dday-row" key={item.id}>
-              <div>
-                <strong>{item.label}</strong>
-                <p className="muted">{item.subtitle}</p>
-              </div>
-              <span className="counter-inline">{item.counter}</span>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel paper-card">
         <div className="summary-row">
           <h3>{editingId ? '카운터 수정' : '카운터 추가'}</h3>
         </div>

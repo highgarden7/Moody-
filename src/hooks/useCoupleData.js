@@ -32,7 +32,7 @@ import {
   subscribeLocalStore
 } from '../lib/localStore';
 
-export function useCoupleData(coupleId) {
+export function useCoupleData(coupleId, refreshToken = 0) {
   const [couple, setCouple] = useState(null);
   const [events, setEvents] = useState([]);
   const [moods, setMoods] = useState({});
@@ -104,7 +104,7 @@ export function useCoupleData(coupleId) {
     return () => {
       unsubs.forEach((unsubscribe) => unsubscribe());
     };
-  }, [coupleId]);
+  }, [coupleId, refreshToken]);
 
   const calendarEvents = useMemo(() => {
     if (!db) {

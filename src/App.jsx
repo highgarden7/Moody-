@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import AuthScreen from './components/AuthScreen';
 import CalendarSection from './components/CalendarSection';
 import DdaySection from './components/DdaySection';
-import MoodSection from './components/MoodSection';
 import PairingScreen from './components/PairingScreen';
 import PwaUpdateModal from './components/PwaUpdateModal';
 import NotificationBell from './components/NotificationBell';
@@ -15,11 +14,10 @@ import {
 } from './hooks/useAuth';
 import { findCoupleIdForUser, useCoupleData } from './hooks/useCoupleData';
 import { usePushNotifications } from './hooks/usePushNotifications';
-import { usePwaUpdate } from './pwaUpdate';
+import { checkAndApplyAppUpdate, usePwaUpdate } from './pwaUpdate';
 
 const TABS = [
   { id: 'calendar', label: '캘린더' },
-  { id: 'mood', label: '컨디션' },
   { id: 'dday', label: 'D-day' }
 ];
 
@@ -30,6 +28,7 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [checkingCouple, setCheckingCouple] = useState(true);
   const [activeTab, setActiveTab] = useState('calendar');
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -82,7 +81,14 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
-  const { couple, events, moods, ddays, loading } = useCoupleData(coupleId);
+  const { couple, events, moods, ddays, loading } = useCoupleData(coupleId, refreshNonce);
+
+  function handleRefresh() {
+    setRefreshNonce((current) => current + 1);
+    setToast('최신 데이터로 새로고침했어.');
+    // 새 앱 버전이 배포돼 있으면 적용(새 SW 활성화 시 자동 리로드)
+    checkAndApplyAppUpdate();
+  }
 
   const ownerColors = useMemo(() => {
     if (!couple?.members?.length) {
@@ -159,6 +165,37 @@ export default function App() {
             </div>
             <div className="header-actions">
               {!firebaseConfigReady ? <span className="demo-badge">데모 2/2</span> : null}
+              <button
+                aria-label="최신 데이터 새로고침"
+                className="icon-btn refresh-btn"
+                onClick={handleRefresh}
+                title="새로고침"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M20 11a8 8 0 1 0-.6 3.5"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M20 4v5h-5"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+              </button>
               <NotificationBell
                 busy={pushNotifications.busy}
                 enabled={pushNotifications.enabled}
@@ -182,16 +219,6 @@ export default function App() {
               coupleId={coupleId}
               currentUser={user}
               events={events}
-              moods={moods}
-              ownerColors={ownerColors}
-              toast={setToast}
-            />
-          ) : null}
-
-          {activeTab === 'mood' ? (
-            <MoodSection
-              coupleId={coupleId}
-              currentUser={user}
               moods={moods}
               ownerColors={ownerColors}
               toast={setToast}
