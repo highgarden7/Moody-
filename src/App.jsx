@@ -5,7 +5,7 @@ import DdaySection from './components/DdaySection';
 import MoodSection from './components/MoodSection';
 import PairingScreen from './components/PairingScreen';
 import { firebaseConfigReady } from './firebase';
-import { useAuth } from './hooks/useAuth';
+import { logOut, useAuth } from './hooks/useAuth';
 import { findCoupleIdForUser, useCoupleData } from './hooks/useCoupleData';
 
 const TABS = [
@@ -95,6 +95,9 @@ export default function App() {
           </div>
           <div className="header-actions">
             {!firebaseConfigReady ? <span className="demo-badge">데모 2/2</span> : null}
+            <button className="btn-secondary" onClick={() => logOut()} type="button">
+              로그아웃
+            </button>
           </div>
         </div>
       </header>
