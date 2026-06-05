@@ -6,13 +6,37 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function coupleDoc(coupleId) {
-      return get(/databases/$(database)/documents/couples/$(coupleId));
+    function couplePath(coupleId) {
+      return /databases/$(database)/documents/couples/$(coupleId);
+    }
+
+    function coupleData(coupleId) {
+      return get(couplePath(coupleId)).data;
     }
 
     function isCoupleMember(coupleId) {
+      return isSignedIn() && request.auth.uid in coupleData(coupleId).members;
+    }
+
+    function isCreatingOwnCouple() {
       return isSignedIn()
-        && request.auth.uid in coupleDoc(coupleId).data.members;
+        && request.resource.data.members is list
+        && request.resource.data.members.size() == 1
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.anniversary is timestamp
+        && request.resource.data.createdAt is timestamp;
+    }
+
+    function isPairJoinUpdate(coupleId) {
+      return isSignedIn()
+        && resource.data.members is list
+        && request.resource.data.members is list
+        && resource.data.members.size() == 1
+        && request.resource.data.members.size() == 2
+        && !(request.auth.uid in resource.data.members)
+        && request.auth.uid in request.resource.data.members
+        && resource.data.members[0] in request.resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']);
     }
 
     match /pairingCodes/{code} {
@@ -29,24 +53,13 @@ service cloud.firestore {
     }
 
     match /couples/{coupleId} {
-      allow read, update, delete: if isCoupleMember(coupleId);
-      allow create: if isSignedIn()
-        && request.resource.data.members is list
-        && request.resource.data.members.size() == 1
-        && request.auth.uid in request.resource.data.members
-        && request.resource.data.anniversary is timestamp
-        && request.resource.data.createdAt is timestamp;
+      allow create: if isCreatingOwnCouple();
+      allow read, delete: if isCoupleMember(coupleId);
+      allow update: if isCoupleMember(coupleId) || isPairJoinUpdate(coupleId);
 
-      match /events/{eventId} {
-        allow read, write: if isCoupleMember(coupleId);
-      }
-
-      match /moods/{date} {
-        allow read, write: if isCoupleMember(coupleId);
-      }
-
-      match /ddays/{ddayId} {
-        allow read, write: if isCoupleMember(coupleId);
+      match /{doc=**} {
+        allow read, write: if isSignedIn()
+          && request.auth.uid in get(couplePath(coupleId)).data.members;
       }
     }
   }

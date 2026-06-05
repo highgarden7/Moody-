@@ -3,7 +3,7 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signOut,
+  signOut
 } from 'firebase/auth';
 import { auth, firebaseConfigReady } from '../firebase';
 import {
@@ -12,7 +12,7 @@ import {
   localLogOut,
   localSignIn,
   localSignUp,
-  subscribeLocalStore,
+  subscribeLocalStore
 } from '../lib/localStore';
 
 export function useAuth() {

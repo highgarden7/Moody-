@@ -7,7 +7,7 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
   const [form, setForm] = useState({
     label: '',
     date: toDateInputValue(new Date()),
-    repeatEvery: 'none',
+    repeatEvery: 'none'
   });
   const [editingId, setEditingId] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -24,14 +24,14 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
         {
           label: form.label.trim(),
           date: new Date(`${form.date}T00:00:00`),
-          repeatEvery: form.repeatEvery,
+          repeatEvery: form.repeatEvery
         },
         editingId
       );
       setForm({
         label: '',
         date: toDateInputValue(new Date()),
-        repeatEvery: 'none',
+        repeatEvery: 'none'
       });
       setEditingId(null);
       toast(editingId ? 'D-day를 수정했어.' : 'D-day를 추가했어.');
@@ -61,7 +61,7 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
     setForm({
       label: item.label,
       date: toDateInputValue(date),
-      repeatEvery: item.repeatEvery,
+      repeatEvery: item.repeatEvery
     });
   }
 

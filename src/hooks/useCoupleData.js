@@ -9,7 +9,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { formatDateKey, parseDateKey } from '../lib/date';
@@ -24,7 +24,7 @@ import {
   localRemoveEvent,
   localSaveDday,
   localSaveMood,
-  subscribeLocalStore,
+  subscribeLocalStore
 } from '../lib/localStore';
 
 export function useCoupleData(coupleId) {
@@ -73,7 +73,7 @@ export function useCoupleData(coupleId) {
         setEvents(
           snapshot.docs.map((item) => ({
             id: item.id,
-            ...item.data(),
+            ...item.data()
           }))
         );
       })
@@ -109,7 +109,7 @@ export function useCoupleData(coupleId) {
     return events.map((event) => ({
       ...event,
       startDate: event.start.toDate(),
-      endDate: event.end.toDate(),
+      endDate: event.end.toDate()
     }));
   }, [events]);
 
@@ -126,7 +126,7 @@ export function useCoupleData(coupleId) {
     events: calendarEvents,
     moods: moodEntries,
     ddays,
-    loading,
+    loading
   };
 }
 
@@ -153,12 +153,12 @@ export async function createCouple({ uid, anniversary, pairingCode }) {
   await setDoc(coupleRef, {
     members: [uid],
     anniversary,
-    createdAt: serverTimestamp(),
+    createdAt: serverTimestamp()
   });
   await setDoc(doc(db, 'pairingCodes', pairingCode), {
     coupleId: coupleRef.id,
     ownerUid: uid,
-    createdAt: serverTimestamp(),
+    createdAt: serverTimestamp()
   });
   await saveUserCouple(uid, coupleRef.id);
   return coupleRef.id;
@@ -194,7 +194,7 @@ export async function joinCouple({ uid, code }) {
   }
 
   await updateDoc(coupleRef, {
-    members: [...members, uid],
+    members: [...members, uid]
   });
   await saveUserCouple(uid, coupleId);
   return coupleId;
@@ -207,7 +207,7 @@ export async function addEvent(coupleId, payload) {
 
   await addDoc(collection(db, 'couples', coupleId, 'events'), {
     ...payload,
-    createdAt: serverTimestamp(),
+    createdAt: serverTimestamp()
   });
 }
 
@@ -240,7 +240,7 @@ export async function saveMood(coupleId, uid, dateKey, payload) {
     moodRef,
     {
       ...current,
-      [uid]: payload,
+      [uid]: payload
     },
     { merge: true }
   );

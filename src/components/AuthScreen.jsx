@@ -8,6 +8,8 @@ export default function AuthScreen() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const showDemoLogin = !import.meta.env.PROD && !firebaseConfigReady;
+
   async function handleSubmit(event) {
     event.preventDefault();
     setSubmitting(true);
@@ -47,7 +49,7 @@ export default function AuthScreen() {
           <p className="muted">가볍게 같이 보는 하루 기록</p>
         </div>
 
-        {!firebaseConfigReady ? (
+        {showDemoLogin ? (
           <div className="demo-actions">
             <button className="btn-secondary" disabled={submitting} onClick={handleDemoLogin} type="button">
               테스트 로그인

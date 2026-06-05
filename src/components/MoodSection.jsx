@@ -11,7 +11,7 @@ const MOOD_OPTIONS = [
   { emoji: '😴', label: '졸림' },
   { emoji: '🔥', label: '의욕' },
   { emoji: '🤯', label: '야근각' },
-  { emoji: '🌧️', label: '다운' },
+  { emoji: '🌧️', label: '다운' }
 ];
 
 export default function MoodSection({ coupleId, currentUser, moods, ownerColors, toast }) {

@@ -19,7 +19,7 @@ export default function PairingScreen({ user, onPaired }) {
       const coupleId = await createCouple({
         uid: user.uid,
         anniversary: new Date(`${anniversary}T00:00:00`),
-        pairingCode,
+        pairingCode
       });
       setCreatedCode(pairingCode);
       onPaired(coupleId);
@@ -38,7 +38,7 @@ export default function PairingScreen({ user, onPaired }) {
     try {
       const coupleId = await joinCouple({
         uid: user.uid,
-        code: joinCode,
+        code: joinCode
       });
       onPaired(coupleId);
     } catch (nextError) {

@@ -6,7 +6,7 @@ function createInitialState() {
     sessionUid: null,
     users: {},
     couples: {},
-    pairingCodes: {},
+    pairingCodes: {}
   };
 }
 
@@ -75,9 +75,9 @@ export async function localSignUp(email, password) {
         uid,
         email: normalizedEmail,
         password,
-        coupleId: null,
-      },
-    },
+        coupleId: null
+      }
+    }
   }));
 
   return getLocalSessionUser();
@@ -96,7 +96,7 @@ export async function localSignIn(email, password) {
 
   updateState((current) => ({
     ...current,
-    sessionUid: user.uid,
+    sessionUid: user.uid
   }));
 
   return getLocalSessionUser();
@@ -105,7 +105,7 @@ export async function localSignIn(email, password) {
 export async function localLogOut() {
   updateState((current) => ({
     ...current,
-    sessionUid: null,
+    sessionUid: null
   }));
 }
 
@@ -124,16 +124,16 @@ export async function localCreateCouple({ uid, anniversary, pairingCode }) {
       ...current.users,
       [uid]: {
         ...current.users[uid],
-        coupleId,
-      },
+        coupleId
+      }
     },
     pairingCodes: {
       ...current.pairingCodes,
       [pairingCode]: {
         ownerUid: uid,
         coupleId,
-        createdAt: now,
-      },
+        createdAt: now
+      }
     },
     couples: {
       ...current.couples,
@@ -144,9 +144,9 @@ export async function localCreateCouple({ uid, anniversary, pairingCode }) {
         createdAt: now,
         events: {},
         moods: {},
-        ddays: {},
-      },
-    },
+        ddays: {}
+      }
+    }
   }));
 
   return coupleId;
@@ -182,16 +182,16 @@ export async function localJoinCouple({ uid, code }) {
         ...current.users,
         [uid]: {
           ...current.users[uid],
-          coupleId: pairing.coupleId,
-        },
+          coupleId: pairing.coupleId
+        }
       },
       couples: {
         ...current.couples,
         [pairing.coupleId]: {
           ...currentCouple,
-          members: nextMembers,
-        },
-      },
+          members: nextMembers
+        }
+      }
     };
   });
 
@@ -206,25 +206,25 @@ export function getLocalCoupleSnapshot(coupleId) {
       couple: null,
       events: [],
       moods: {},
-      ddays: [],
+      ddays: []
     };
   }
 
   return {
     couple: {
       ...couple,
-      anniversary: new Date(couple.anniversary),
+      anniversary: new Date(couple.anniversary)
     },
     events: Object.values(couple.events).map((item) => ({
       ...item,
       startDate: new Date(item.start),
-      endDate: new Date(item.end),
+      endDate: new Date(item.end)
     })),
     moods: couple.moods,
     ddays: Object.values(couple.ddays).map((item) => ({
       ...item,
-      date: new Date(item.date),
-    })),
+      date: new Date(item.date)
+    }))
   };
 }
 
@@ -243,11 +243,11 @@ export async function localAddEvent(coupleId, payload) {
             ...payload,
             start: payload.start.toISOString(),
             end: payload.end.toISOString(),
-            createdAt: new Date().toISOString(),
-          },
-        },
-      },
-    },
+            createdAt: new Date().toISOString()
+          }
+        }
+      }
+    }
   }));
 }
 
@@ -264,11 +264,11 @@ export async function localEditEvent(coupleId, eventId, payload) {
             ...current.couples[coupleId].events[eventId],
             ...payload,
             start: payload.start.toISOString(),
-            end: payload.end.toISOString(),
-          },
-        },
-      },
-    },
+            end: payload.end.toISOString()
+          }
+        }
+      }
+    }
   }));
 }
 
@@ -282,9 +282,9 @@ export async function localRemoveEvent(coupleId, eventId) {
         ...current.couples,
         [coupleId]: {
           ...current.couples[coupleId],
-          events: nextEvents,
-        },
-      },
+          events: nextEvents
+        }
+      }
     };
   });
 }
@@ -300,11 +300,11 @@ export async function localSaveMood(coupleId, uid, dateKey, payload) {
           ...current.couples[coupleId].moods,
           [dateKey]: {
             ...(current.couples[coupleId].moods[dateKey] || {}),
-            [uid]: payload,
-          },
-        },
-      },
-    },
+            [uid]: payload
+          }
+        }
+      }
+    }
   }));
 }
 
@@ -321,11 +321,11 @@ export async function localSaveDday(coupleId, payload, ddayId = null) {
           [nextId]: {
             id: nextId,
             ...payload,
-            date: payload.date.toISOString(),
-          },
-        },
-      },
-    },
+            date: payload.date.toISOString()
+          }
+        }
+      }
+    }
   }));
 }
 
@@ -339,9 +339,9 @@ export async function localRemoveDday(coupleId, ddayId) {
         ...current.couples,
         [coupleId]: {
           ...current.couples[coupleId],
-          ddays: nextDdays,
-        },
-      },
+          ddays: nextDdays
+        }
+      }
     };
   });
 }
@@ -365,14 +365,14 @@ export async function localDemoLogin() {
         uid: demoUid,
         email: demoEmail,
         password: 'demo1234',
-        coupleId,
+        coupleId
       },
       [partnerUid]: {
         uid: partnerUid,
         email: 'partner@moody.local',
         password: 'demo1234',
-        coupleId,
-      },
+        coupleId
+      }
     },
     couples: {
       ...current.couples,
@@ -389,7 +389,7 @@ export async function localDemoLogin() {
             end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 21, 0).toISOString(),
             allDay: false,
             ownerUid: demoUid,
-            createdAt: today.toISOString(),
+            createdAt: today.toISOString()
           },
           'demo-event-2': {
             id: 'demo-event-2',
@@ -398,37 +398,37 @@ export async function localDemoLogin() {
             end: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 16, 0).toISOString(),
             allDay: false,
             ownerUid: partnerUid,
-            createdAt: today.toISOString(),
-          },
+            createdAt: today.toISOString()
+          }
         },
         moods: {
           [todayKey]: {
             [demoUid]: {
               emoji: '😮‍💨',
-              note: '오후에 좀 기빨림. 저녁엔 괜찮아질 듯',
+              note: '오후에 좀 기빨림. 저녁엔 괜찮아질 듯'
             },
             [partnerUid]: {
               emoji: '😀',
-              note: '오늘은 비교적 괜찮음',
-            },
-          },
+              note: '오늘은 비교적 괜찮음'
+            }
+          }
         },
         ddays: {
           'demo-dday-1': {
             id: 'demo-dday-1',
             label: '다음 여행',
             date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 18).toISOString(),
-            repeatEvery: 'none',
+            repeatEvery: 'none'
           },
           'demo-dday-2': {
             id: 'demo-dday-2',
             label: '만난 날',
             date: anniversary.toISOString(),
-            repeatEvery: '100days',
-          },
-        },
-      },
-    },
+            repeatEvery: '100days'
+          }
+        }
+      }
+    }
   }));
 
   return getLocalSessionUser();
