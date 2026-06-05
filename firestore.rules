@@ -46,6 +46,20 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']);
     }
 
+    function currentFcmTokens(coupleId) {
+      return resource.data.fcmTokens is map ? resource.data.fcmTokens : {};
+    }
+
+    function nextFcmTokens() {
+      return request.resource.data.fcmTokens is map ? request.resource.data.fcmTokens : {};
+    }
+
+    function isOwnFcmTokenUpdate(coupleId) {
+      return isCoupleMember(coupleId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmTokens'])
+        && nextFcmTokens().diff(currentFcmTokens(coupleId)).affectedKeys().hasOnly([request.auth.uid]);
+    }
+
     match /config/app {
       allow read: if true;
       allow write: if false;
@@ -68,7 +82,7 @@ service cloud.firestore {
     match /couples/{coupleId} {
       allow create: if signupOpen() && isCreatingOwnCouple();
       allow read, delete: if isCoupleMember(coupleId);
-      allow update: if isCoupleMember(coupleId)
+      allow update: if isOwnFcmTokenUpdate(coupleId)
         || (signupOpen() && isPairJoinUpdate(coupleId));
 
       match /{doc=**} {

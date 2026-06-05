@@ -630,6 +630,11 @@ strong {
   justify-content: space-between;
 }
 
+.notification-card p {
+  margin-top: 4px;
+  max-width: 220px;
+}
+
 .event-row,
 .share-row,
 .dday-row {

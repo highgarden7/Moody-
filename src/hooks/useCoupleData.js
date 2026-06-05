@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   getDoc,
@@ -285,6 +286,20 @@ export async function removeDday(coupleId, ddayId) {
   }
 
   await deleteDoc(doc(db, 'couples', coupleId, 'ddays', ddayId));
+}
+
+export async function saveFcmToken(coupleId, uid, token) {
+  ensureDb();
+  await updateDoc(doc(db, 'couples', coupleId), {
+    [`fcmTokens.${uid}`]: token
+  });
+}
+
+export async function removeFcmToken(coupleId, uid) {
+  ensureDb();
+  await updateDoc(doc(db, 'couples', coupleId), {
+    [`fcmTokens.${uid}`]: deleteField()
+  });
 }
 
 export function eventsForDate(events, date) {

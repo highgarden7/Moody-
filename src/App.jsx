@@ -5,6 +5,7 @@ import DdaySection from './components/DdaySection';
 import MoodSection from './components/MoodSection';
 import PairingScreen from './components/PairingScreen';
 import PwaUpdateModal from './components/PwaUpdateModal';
+import PushNotificationCard from './components/PushNotificationCard';
 import { firebaseConfigReady } from './firebase';
 import {
   clearPendingSignupContext,
@@ -13,6 +14,7 @@ import {
   useAuth
 } from './hooks/useAuth';
 import { findCoupleIdForUser, useCoupleData } from './hooks/useCoupleData';
+import { usePushNotifications } from './hooks/usePushNotifications';
 import { usePwaUpdate } from './pwaUpdate';
 
 const TABS = [
@@ -93,6 +95,12 @@ export default function App() {
     }, {});
   }, [couple, user]);
 
+  const pushNotifications = usePushNotifications({
+    coupleId,
+    uid: user?.uid || '',
+    toast: setToast
+  });
+
   const updateModal =
     needRefresh && updateSW ? <PwaUpdateModal onUpdate={() => updateSW(true)} /> : null;
 
@@ -159,6 +167,16 @@ export default function App() {
         </header>
 
         <main className="app-main">
+          <PushNotificationCard
+            busy={pushNotifications.busy}
+            enabled={pushNotifications.enabled}
+            onDisable={pushNotifications.disableNotifications}
+            onEnable={pushNotifications.enableNotifications}
+            permission={pushNotifications.permission}
+            reason={pushNotifications.reason}
+            supported={pushNotifications.supported}
+          />
+
           {activeTab === 'calendar' ? (
             <CalendarSection
               coupleId={coupleId}
