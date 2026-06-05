@@ -20,6 +20,13 @@ export default function AuthScreen() {
   const showDemoLogin = !import.meta.env.PROD && !firebaseConfigReady;
 
   useEffect(() => {
+    document.body.classList.add('no-scroll');
+    return () => {
+      document.body.classList.remove('no-scroll');
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
 
     async function loadSignupConfig() {
@@ -105,8 +112,8 @@ export default function AuthScreen() {
   const showSignup = signupEnabled && !loadingConfig;
 
   return (
-    <div className="screen auth-screen auth-screen-offset">
-      <div className="auth-card paper-card auth-paper">
+    <div className="screen auth-screen auth-screen-offset landing-screen">
+      <div className="auth-card paper-card auth-paper landing-card auth-card-scroll">
         <div className="auth-intro auth-brand-intro">
           <img className="auth-logotype" src="/files/logotype.svg" alt="moody" />
           <p className="muted">가볍게 같이 보는 하루 기록</p>
@@ -127,7 +134,7 @@ export default function AuthScreen() {
           </div>
         ) : null}
 
-        <div className="segmented">
+        <div className="segmented auth-toggle-group">
           <button
             className={mode === 'signin' ? 'active' : ''}
             onClick={() => setMode('signin')}
@@ -146,9 +153,9 @@ export default function AuthScreen() {
           ) : null}
         </div>
 
-        <form className="stack" onSubmit={handleSubmit}>
+        <form className="stack auth-form-stack" onSubmit={handleSubmit}>
           {mode === 'signup' ? (
-            <div className="segmented signup-paths">
+            <div className="segmented auth-toggle-group signup-paths">
               <button
                 className={signupPath === 'founder' ? 'active' : ''}
                 onClick={() => setSignupPath('founder')}

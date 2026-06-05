@@ -7,6 +7,13 @@ export default function PairingScreen({ user, coupleId, onLogout }) {
   const [copyLabel, setCopyLabel] = useState('복사');
 
   useEffect(() => {
+    document.body.classList.add('no-scroll');
+    return () => {
+      document.body.classList.remove('no-scroll');
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
     const pending = getPendingSignupContext();
 
@@ -41,9 +48,9 @@ export default function PairingScreen({ user, coupleId, onLogout }) {
   }
 
   return (
-    <div className="screen pairing-screen">
-      <div className="pairing-grid">
-        <section className="panel pairing-wait">
+    <div className="screen pairing-screen landing-screen">
+      <div className="pairing-grid landing-grid">
+        <section className="panel pairing-wait landing-card">
           <h2>상대 합류 기다리는 중</h2>
           <p className="muted">상대가 회원가입할 때 아래 커플 코드를 넣으면 바로 연결된다.</p>
 
