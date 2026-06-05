@@ -11,8 +11,19 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
   });
   const [editingId, setEditingId] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const items = useMemo(() => buildDdayItems(anniversary, ddays), [anniversary, ddays]);
+
+  function closeForm() {
+    setEditingId(null);
+    setForm({
+      label: '',
+      date: toDateInputValue(new Date()),
+      repeatEvery: 'none'
+    });
+    setShowForm(false);
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -34,6 +45,7 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
         repeatEvery: 'none'
       });
       setEditingId(null);
+      setShowForm(false);
       toast(editingId ? 'D-day를 수정했어.' : 'D-day를 추가했어.');
     } catch (error) {
       toast(error.message || 'D-day 저장에 실패했어.');
@@ -63,6 +75,7 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
       date: toDateInputValue(date),
       repeatEvery: item.repeatEvery
     });
+    setShowForm(true);
   }
 
   return (
@@ -81,10 +94,20 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
       </div>
 
       <section className="panel paper-card">
-        <div className="summary-row">
-          <h3>{editingId ? '카운터 수정' : '카운터 추가'}</h3>
+        <div className="summary-row summary-row-spread">
+          <h3>{editingId ? '카운터 수정' : '카운터'}</h3>
+          {showForm ? (
+            <button className="btn-secondary" onClick={closeForm} type="button">
+              닫기
+            </button>
+          ) : (
+            <button className="btn-secondary" onClick={() => setShowForm(true)} type="button">
+              + 카운터 추가
+            </button>
+          )}
         </div>
 
+        {showForm ? (
         <form className="stack" onSubmit={handleSubmit}>
           <label className="field">
             <span>라벨</span>
@@ -122,6 +145,7 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
             {editingId ? '수정 저장' : '+ 추가'}
           </button>
         </form>
+        ) : null}
 
         <div className="event-list compact">
           {ddays.map((item) => (

@@ -941,82 +941,44 @@ strong {
   min-width: 0;
 }
 
-.bucket-list {
+.bucket-toggle {
+  width: 100%;
+}
+
+.bucket-note {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 14px;
+}
+
+.bucket-note-body {
+  text-align: left;
+  background: transparent;
+  padding: 0;
+  color: var(--note-ink);
   display: grid;
   gap: 10px;
 }
 
-.bucket-card {
-  border: 1px solid var(--bucket, #e0c088);
-  border-radius: 12px;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.bucket-open {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-}
-
-.bucket-card-body {
-  text-align: left;
-  background: transparent;
-  padding: 0;
-  color: var(--text);
-}
-
-.bucket-card-title {
-  font-size: 16px;
+.bucket-note-body strong {
+  font-size: 17px;
   font-weight: 500;
+}
+
+.bucket-note-photo {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+  box-shadow: 0 2px 6px rgba(60, 40, 10, 0.18);
 }
 
 .bucket-card-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.bucket-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.bucket-done {
-  display: flex;
-  flex-direction: column;
-}
-
-.bucket-thumb-btn {
-  display: grid;
-  gap: 0;
-  padding: 0;
-  background: transparent;
-  text-align: left;
-}
-
-.bucket-thumb-btn img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  display: block;
-}
-
-.bucket-thumb-empty {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1 / 1;
-  background: var(--bucket-soft, #f2e4c6);
-  color: var(--note-ink);
-  font-weight: 500;
-}
-
-.bucket-done-title {
-  padding: 8px 10px;
-  font-size: 14px;
-  color: var(--text);
 }
 
 .bucket-badge {

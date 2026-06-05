@@ -21,6 +21,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
   const [adding, setAdding] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
+  const [listTab, setListTab] = useState('open');
   const processedRef = useRef(new Set());
 
   const openItems = useMemo(() => items.filter((item) => item.status !== 'done'), [items]);
@@ -136,22 +137,38 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
         </form>
       </section>
 
-      <section className="panel paper-card">
-        <div className="summary-row">
-          <h3>진행 중</h3>
-        </div>
-        {openItems.length === 0 ? (
-          <p className="muted">아직 진행 중인 버킷이 없어.</p>
+      <div className="segmented bucket-toggle">
+        <button
+          className={listTab === 'open' ? 'active' : ''}
+          onClick={() => setListTab('open')}
+          type="button"
+        >
+          진행 중
+        </button>
+        <button
+          className={listTab === 'done' ? 'active' : ''}
+          onClick={() => setListTab('done')}
+          type="button"
+        >
+          완성
+        </button>
+      </div>
+
+      {listTab === 'open' ? (
+        openItems.length === 0 ? (
+          <section className="panel paper-card">
+            <p className="muted">아직 진행 중인 버킷이 없어.</p>
+          </section>
         ) : (
-          <div className="bucket-list">
-            {openItems.map((item) => (
-              <article className="bucket-card bucket-open" key={item.id}>
+          <div className="note-stack">
+            {openItems.map((item, index) => (
+              <article className={`note bucket-note ${noteTone(index)}`} key={item.id}>
                 <button
-                  className="bucket-card-body"
+                  className="bucket-note-body"
                   onClick={() => setSelectedItemId(item.id)}
                   type="button"
                 >
-                  <span className="bucket-card-title">{item.title}</span>
+                  <strong>{item.title}</strong>
                 </button>
                 <div className="bucket-card-actions">
                   <UploadButton
@@ -172,44 +189,46 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
               </article>
             ))}
           </div>
-        )}
-      </section>
-
-      <section className="panel paper-card">
-        <div className="summary-row">
-          <h3>완성</h3>
-        </div>
-        {doneItems.length === 0 ? (
+        )
+      ) : doneItems.length === 0 ? (
+        <section className="panel paper-card">
           <p className="muted">완성한 버킷이 아직 없어.</p>
-        ) : (
-          <div className="bucket-grid">
-            {doneItems.map((item) => (
-              <article className="bucket-card bucket-done" key={item.id}>
-                <button
-                  className="bucket-thumb-btn"
-                  onClick={() => setSelectedItemId(item.id)}
-                  type="button"
-                >
-                  {item.coverThumbUrl ? (
-                    <img alt={item.title} loading="lazy" src={item.coverThumbUrl} />
-                  ) : (
-                    <span className="bucket-thumb-empty">완성</span>
-                  )}
-                  <span className="bucket-done-title">{item.title}</span>
-                </button>
-                <DeleteConsent
-                  item={item}
-                  myUid={myUid}
-                  partnerUid={partnerUid}
-                  onVote={handleVote}
-                />
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+        </section>
+      ) : (
+        <div className="note-stack">
+          {doneItems.map((item, index) => (
+            <article className={`note bucket-note bucket-note-done ${noteTone(index)}`} key={item.id}>
+              <button
+                className="bucket-note-body"
+                onClick={() => setSelectedItemId(item.id)}
+                type="button"
+              >
+                <strong>{item.title}</strong>
+                {item.coverThumbUrl ? (
+                  <img
+                    alt={item.title}
+                    className="bucket-note-photo"
+                    loading="lazy"
+                    src={item.coverThumbUrl}
+                  />
+                ) : null}
+              </button>
+              <DeleteConsent
+                item={item}
+                myUid={myUid}
+                partnerUid={partnerUid}
+                onVote={handleVote}
+              />
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
+}
+
+function noteTone(index) {
+  return index % 2 === 0 ? 'note-yellow tilt-left' : 'note-peach tilt-right';
 }
 
 function BucketDetail({
