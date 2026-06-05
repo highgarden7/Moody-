@@ -113,138 +113,141 @@ export default function AuthScreen() {
 
   return (
     <div className="screen auth-screen auth-screen-offset landing-screen">
-      <div className="auth-card paper-card auth-paper landing-card auth-card-scroll">
-        <div className="auth-intro auth-brand-intro">
-          <img className="auth-logotype" src="/files/logotype.svg" alt="moody" />
-          <p className="muted">가볍게 같이 보는 하루 기록</p>
-        </div>
-
-        {showDemoLogin ? (
-          <div className="demo-actions">
-            <button className="btn-secondary" disabled={submitting} onClick={handleDemoLogin} type="button">
-              테스트 로그인
-            </button>
-            <p className="muted">데모로 둘러보기</p>
+      <div className="auth-card paper-card auth-paper landing-card">
+        <div className="auth-card-scroll">
+          <div className="auth-intro auth-brand-intro">
+            <img className="auth-logotype" src="/files/logotype.svg" alt="moody" />
+            <p className="muted">가볍게 같이 보는 하루 기록</p>
           </div>
-        ) : null}
 
-        {!showSignup ? (
-          <div className="info-banner">
-            <p>현재 신규 가입이 닫혀 있어요.</p>
-          </div>
-        ) : null}
-
-        <div className="segmented auth-toggle-group auth-toggle-spacer">
-          <button
-            className={mode === 'signin' ? 'active' : ''}
-            onClick={() => setMode('signin')}
-            type="button"
-          >
-            로그인
-          </button>
-          {showSignup ? (
-            <button
-              className={mode === 'signup' ? 'active' : ''}
-              onClick={() => setMode('signup')}
-              type="button"
-            >
-              회원가입
-            </button>
-          ) : null}
-        </div>
-
-        <form className="stack auth-form-stack" onSubmit={handleSubmit}>
-          {mode === 'signup' ? (
-            <div className="segmented auth-toggle-group auth-toggle-spacer signup-paths">
-              <button
-                className={signupPath === 'founder' ? 'active' : ''}
-                onClick={() => setSignupPath('founder')}
-                type="button"
-              >
-                커플 새로 만들기
+          {showDemoLogin ? (
+            <div className="demo-actions">
+              <button className="btn-secondary" disabled={submitting} onClick={handleDemoLogin} type="button">
+                테스트 로그인
               </button>
-              <button
-                className={signupPath === 'joiner' ? 'active' : ''}
-                onClick={() => setSignupPath('joiner')}
-                type="button"
-              >
-                커플 코드로 합류
-              </button>
+              <p className="muted">데모로 둘러보기</p>
             </div>
           ) : null}
 
-          <label className="field">
-            <span>이메일</span>
-            <input
-              autoComplete="email"
-              name="email"
-              onChange={(event) =>
-                setForm((current) => ({ ...current, email: event.target.value }))
-              }
-              required
-              type="email"
-              value={form.email}
-            />
-          </label>
-
-          <label className="field">
-            <span>비밀번호</span>
-            <input
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              minLength={6}
-              name="password"
-              onChange={(event) =>
-                setForm((current) => ({ ...current, password: event.target.value }))
-              }
-              required
-              type="password"
-              value={form.password}
-            />
-          </label>
-
-          {mode === 'signup' && signupPath === 'founder' ? (
-            <label className="field">
-              <span>만난 날</span>
-              <input
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, anniversary: event.target.value }))
-                }
-                required
-                type="date"
-                value={form.anniversary}
-              />
-            </label>
+          {!showSignup ? (
+            <div className="info-banner">
+              <p>현재 신규 가입이 닫혀 있어요.</p>
+            </div>
           ) : null}
 
-          {mode === 'signup' && signupPath === 'joiner' ? (
+          <div className="segmented auth-toggle-group auth-toggle-spacer">
+            <button
+              className={mode === 'signin' ? 'active' : ''}
+              onClick={() => setMode('signin')}
+              type="button"
+            >
+              로그인
+            </button>
+            {showSignup ? (
+              <button
+                className={mode === 'signup' ? 'active' : ''}
+                onClick={() => setMode('signup')}
+                type="button"
+              >
+                회원가입
+              </button>
+            ) : null}
+          </div>
+
+          <form className="stack auth-form-stack" onSubmit={handleSubmit}>
+            {mode === 'signup' ? (
+              <div className="segmented auth-toggle-group auth-toggle-spacer signup-paths">
+                <button
+                  className={signupPath === 'founder' ? 'active' : ''}
+                  onClick={() => setSignupPath('founder')}
+                  type="button"
+                >
+                  커플 새로 만들기
+                </button>
+                <button
+                  className={signupPath === 'joiner' ? 'active' : ''}
+                  onClick={() => setSignupPath('joiner')}
+                  type="button"
+                >
+                  커플 코드로 합류
+                </button>
+              </div>
+            ) : null}
+
             <label className="field">
-              <span>커플 코드</span>
+              <span>이메일</span>
               <input
+                autoComplete="email"
+                name="email"
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    coupleCode: event.target.value.toUpperCase()
-                  }))
+                  setForm((current) => ({ ...current, email: event.target.value }))
                 }
-                placeholder="ABC123"
                 required
-                value={form.coupleCode}
+                type="email"
+                value={form.email}
               />
             </label>
-          ) : null}
 
-          {error ? <p className="error-text">{error}</p> : null}
+            <label className="field">
+              <span>비밀번호</span>
+              <input
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                minLength={6}
+                name="password"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, password: event.target.value }))
+                }
+                required
+                type="password"
+                value={form.password}
+              />
+            </label>
 
-          <button className="btn-primary" disabled={submitting || loadingConfig} type="submit">
-            {submitting
-              ? '처리 중...'
-              : mode === 'signin'
-                ? '로그인'
-                : signupPath === 'founder'
-                  ? '가입하고 코드 만들기'
-                  : '가입하고 합류하기'}
-          </button>
-        </form>
+            {mode === 'signup' && signupPath === 'founder' ? (
+              <label className="field">
+                <span>만난 날</span>
+                <input
+                  className="date-input"
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, anniversary: event.target.value }))
+                  }
+                  required
+                  type="date"
+                  value={form.anniversary}
+                />
+              </label>
+            ) : null}
+
+            {mode === 'signup' && signupPath === 'joiner' ? (
+              <label className="field">
+                <span>커플 코드</span>
+                <input
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      coupleCode: event.target.value.toUpperCase()
+                    }))
+                  }
+                  placeholder="ABC123"
+                  required
+                  value={form.coupleCode}
+                />
+              </label>
+            ) : null}
+
+            {error ? <p className="error-text">{error}</p> : null}
+
+            <button className="btn-primary" disabled={submitting || loadingConfig} type="submit">
+              {submitting
+                ? '처리 중...'
+                : mode === 'signin'
+                  ? '로그인'
+                  : signupPath === 'founder'
+                    ? '가입하고 코드 만들기'
+                    : '가입하고 합류하기'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

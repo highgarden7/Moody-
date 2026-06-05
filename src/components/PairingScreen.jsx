@@ -51,21 +51,23 @@ export default function PairingScreen({ user, coupleId, onLogout }) {
     <div className="screen pairing-screen landing-screen">
       <div className="pairing-grid landing-grid">
         <section className="panel pairing-wait landing-card">
-          <h2>상대 합류 기다리는 중</h2>
-          <p className="muted">상대가 회원가입할 때 아래 커플 코드를 넣으면 바로 연결된다.</p>
+          <div className="auth-card-scroll">
+            <h2>상대 합류 기다리는 중</h2>
+            <p className="muted">상대가 회원가입할 때 아래 커플 코드를 넣으면 바로 연결돼.</p>
 
-          <div className="code-box">
-            <span>커플 코드</span>
-            <strong>{pairingCode || '생성 중...'}</strong>
-          </div>
+            <div className="code-box">
+              <span>커플 코드</span>
+              <strong>{pairingCode || '생성 중...'}</strong>
+            </div>
 
-          <div className="copy-row">
-            <button className="btn-secondary" disabled={!pairingCode} onClick={handleCopy} type="button">
-              {copyLabel}
-            </button>
-            <button className="btn-secondary" onClick={() => onLogout()} type="button">
-              로그아웃
-            </button>
+            <div className="copy-row">
+              <button className="btn-secondary" disabled={!pairingCode} onClick={handleCopy} type="button">
+                {copyLabel}
+              </button>
+              <button className="btn-secondary" onClick={() => onLogout()} type="button">
+                로그아웃
+              </button>
+            </div>
           </div>
         </section>
       </div>
