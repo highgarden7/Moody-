@@ -1,14 +1,65 @@
-import { useState } from 'react';
-import { firebaseConfigReady } from '../firebase';
-import { signIn, signInDemo, signUp } from '../hooks/useAuth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { db, firebaseConfigReady } from '../firebase';
+import { signIn, signInDemo, signUpFounder, signUpJoiner } from '../hooks/useAuth';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState('signin');
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [signupPath, setSignupPath] = useState('founder');
+  const [signupEnabled, setSignupEnabled] = useState(true);
+  const [loadingConfig, setLoadingConfig] = useState(Boolean(firebaseConfigReady));
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    anniversary: '',
+    coupleCode: ''
+  });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const showDemoLogin = !import.meta.env.PROD && !firebaseConfigReady;
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSignupConfig() {
+      if (!db) {
+        if (active) {
+          setSignupEnabled(true);
+          setLoadingConfig(false);
+        }
+        return;
+      }
+
+      try {
+        const snapshot = await getDoc(doc(db, 'config', 'app'));
+        if (!active) {
+          return;
+        }
+
+        const enabled = snapshot.exists() && snapshot.data().signupEnabled === true;
+        setSignupEnabled(enabled);
+        if (!enabled) {
+          setMode('signin');
+        }
+      } catch {
+        if (active) {
+          setSignupEnabled(false);
+          setMode('signin');
+        }
+      } finally {
+        if (active) {
+          setLoadingConfig(false);
+        }
+      }
+    }
+
+    loadSignupConfig();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -16,10 +67,20 @@ export default function AuthScreen() {
     setError('');
 
     try {
-      if (mode === 'signup') {
-        await signUp(form.email, form.password);
-      } else {
+      if (mode === 'signin') {
         await signIn(form.email, form.password);
+      } else if (signupPath === 'founder') {
+        await signUpFounder({
+          email: form.email,
+          password: form.password,
+          anniversary: form.anniversary
+        });
+      } else {
+        await signUpJoiner({
+          email: form.email,
+          password: form.password,
+          code: form.coupleCode
+        });
       }
     } catch (nextError) {
       setError(mapAuthError(nextError));
@@ -41,6 +102,8 @@ export default function AuthScreen() {
     }
   }
 
+  const showSignup = signupEnabled && !loadingConfig;
+
   return (
     <div className="screen auth-screen auth-screen-offset">
       <div className="auth-card paper-card auth-paper">
@@ -58,6 +121,12 @@ export default function AuthScreen() {
           </div>
         ) : null}
 
+        {!showSignup ? (
+          <div className="info-banner">
+            <p>현재 신규 가입이 닫혀 있어요.</p>
+          </div>
+        ) : null}
+
         <div className="segmented">
           <button
             className={mode === 'signin' ? 'active' : ''}
@@ -66,16 +135,37 @@ export default function AuthScreen() {
           >
             로그인
           </button>
-          <button
-            className={mode === 'signup' ? 'active' : ''}
-            onClick={() => setMode('signup')}
-            type="button"
-          >
-            회원가입
-          </button>
+          {showSignup ? (
+            <button
+              className={mode === 'signup' ? 'active' : ''}
+              onClick={() => setMode('signup')}
+              type="button"
+            >
+              회원가입
+            </button>
+          ) : null}
         </div>
 
         <form className="stack" onSubmit={handleSubmit}>
+          {mode === 'signup' ? (
+            <div className="segmented signup-paths">
+              <button
+                className={signupPath === 'founder' ? 'active' : ''}
+                onClick={() => setSignupPath('founder')}
+                type="button"
+              >
+                커플 새로 만들기
+              </button>
+              <button
+                className={signupPath === 'joiner' ? 'active' : ''}
+                onClick={() => setSignupPath('joiner')}
+                type="button"
+              >
+                커플 코드로 합류
+              </button>
+            </div>
+          ) : null}
+
           <label className="field">
             <span>이메일</span>
             <input
@@ -105,10 +195,47 @@ export default function AuthScreen() {
             />
           </label>
 
+          {mode === 'signup' && signupPath === 'founder' ? (
+            <label className="field">
+              <span>만난 날</span>
+              <input
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, anniversary: event.target.value }))
+                }
+                required
+                type="date"
+                value={form.anniversary}
+              />
+            </label>
+          ) : null}
+
+          {mode === 'signup' && signupPath === 'joiner' ? (
+            <label className="field">
+              <span>커플 코드</span>
+              <input
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    coupleCode: event.target.value.toUpperCase()
+                  }))
+                }
+                placeholder="ABC123"
+                required
+                value={form.coupleCode}
+              />
+            </label>
+          ) : null}
+
           {error ? <p className="error-text">{error}</p> : null}
 
-          <button className="btn-primary" disabled={submitting} type="submit">
-            {submitting ? '처리 중...' : mode === 'signup' ? '계정 만들기' : '로그인'}
+          <button className="btn-primary" disabled={submitting || loadingConfig} type="submit">
+            {submitting
+              ? '처리 중...'
+              : mode === 'signin'
+                ? '로그인'
+                : signupPath === 'founder'
+                  ? '가입하고 코드 만들기'
+                  : '가입하고 합류하기'}
           </button>
         </form>
       </div>

@@ -14,6 +14,10 @@ service cloud.firestore {
       return get(couplePath(coupleId)).data;
     }
 
+    function signupOpen() {
+      return get(/databases/$(database)/documents/config/app).data.signupEnabled == true;
+    }
+
     function isCoupleMember(coupleId) {
       return isSignedIn() && request.auth.uid in coupleData(coupleId).members;
     }
@@ -28,20 +32,29 @@ service cloud.firestore {
     }
 
     function isPairJoinUpdate(coupleId) {
+      let currentMembers = coupleData(coupleId).members;
+      let nextMembers = request.resource.data.members;
+
       return isSignedIn()
-        && resource.data.members is list
-        && request.resource.data.members is list
-        && resource.data.members.size() == 1
-        && request.resource.data.members.size() == 2
-        && !(request.auth.uid in resource.data.members)
-        && request.auth.uid in request.resource.data.members
-        && resource.data.members[0] in request.resource.data.members
+        && currentMembers is list
+        && nextMembers is list
+        && currentMembers.size() == 1
+        && nextMembers.size() == 2
+        && !(request.auth.uid in currentMembers)
+        && request.auth.uid in nextMembers
+        && currentMembers[0] in nextMembers
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']);
+    }
+
+    match /config/app {
+      allow read: if true;
+      allow write: if false;
     }
 
     match /pairingCodes/{code} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow create: if signupOpen()
+        && isSignedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.coupleId is string
         && request.resource.data.createdAt is timestamp;
@@ -53,9 +66,10 @@ service cloud.firestore {
     }
 
     match /couples/{coupleId} {
-      allow create: if isCreatingOwnCouple();
+      allow create: if signupOpen() && isCreatingOwnCouple();
       allow read, delete: if isCoupleMember(coupleId);
-      allow update: if isCoupleMember(coupleId) || isPairJoinUpdate(coupleId);
+      allow update: if isCoupleMember(coupleId)
+        || (signupOpen() && isPairJoinUpdate(coupleId));
 
       match /{doc=**} {
         allow read, write: if isSignedIn()

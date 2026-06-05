@@ -1,103 +1,61 @@
-import { useState } from 'react';
-import { createCouple, joinCouple } from '../hooks/useCoupleData';
-import { createPairingCode } from '../lib/pairing';
+import { useEffect, useState } from 'react';
+import { findPairingCodeForOwner } from '../hooks/useCoupleData';
 
-export default function PairingScreen({ user, onPaired }) {
-  const [anniversary, setAnniversary] = useState('');
-  const [joinCode, setJoinCode] = useState('');
-  const [createdCode, setCreatedCode] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+export default function PairingScreen({ user, coupleId, onLogout }) {
+  const [pairingCode, setPairingCode] = useState('');
+  const [copyLabel, setCopyLabel] = useState('복사');
 
-  async function handleCreate(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
+  useEffect(() => {
+    let active = true;
 
-    try {
-      const pairingCode = createPairingCode();
-      const coupleId = await createCouple({
-        uid: user.uid,
-        anniversary: new Date(`${anniversary}T00:00:00`),
-        pairingCode
-      });
-      setCreatedCode(pairingCode);
-      onPaired(coupleId);
-    } catch (nextError) {
-      setError(nextError.message || '커플 공간 생성에 실패했어.');
-    } finally {
-      setBusy(false);
+    findPairingCodeForOwner(user.uid).then((code) => {
+      if (active) {
+        setPairingCode(code ?? '');
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user.uid, coupleId]);
+
+  async function handleCopy() {
+    if (!pairingCode) {
+      return;
     }
-  }
-
-  async function handleJoin(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
 
     try {
-      const coupleId = await joinCouple({
-        uid: user.uid,
-        code: joinCode
-      });
-      onPaired(coupleId);
-    } catch (nextError) {
-      setError(nextError.message || '페어링에 실패했어.');
-    } finally {
-      setBusy(false);
+      await navigator.clipboard.writeText(pairingCode);
+      setCopyLabel('복사됨');
+      window.setTimeout(() => setCopyLabel('복사'), 1800);
+    } catch {
+      setCopyLabel('실패');
+      window.setTimeout(() => setCopyLabel('복사'), 1800);
     }
   }
 
   return (
     <div className="screen pairing-screen">
       <div className="pairing-grid">
-        <section className="panel">
-          <h2>커플 공간 만들기</h2>
-          <form className="stack" onSubmit={handleCreate}>
-            <label className="field">
-              <span>만난 날</span>
-              <input
-                onChange={(event) => setAnniversary(event.target.value)}
-                required
-                type="date"
-                value={anniversary}
-              />
-            </label>
-            <button className="btn-primary" disabled={busy} type="submit">
-              {busy ? '생성 중...' : '커플 생성'}
-            </button>
-          </form>
+        <section className="panel pairing-wait">
+          <h2>상대 합류 기다리는 중</h2>
+          <p className="muted">상대가 회원가입할 때 아래 커플 코드를 넣으면 바로 연결된다.</p>
 
-          {createdCode ? (
-            <div className="code-box">
-              <span>페어링 코드</span>
-              <strong>{createdCode}</strong>
-            </div>
-          ) : (
-            <p className="muted">코드를 만들어서 상대에게 보내면 된다.</p>
-          )}
-        </section>
+          <div className="code-box">
+            <span>커플 코드</span>
+            <strong>{pairingCode || '생성 중...'}</strong>
+          </div>
 
-        <section className="panel">
-          <h2>코드로 합류</h2>
-          <form className="stack" onSubmit={handleJoin}>
-            <label className="field">
-              <span>페어링 코드</span>
-              <input
-                onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                placeholder="ABC123"
-                required
-                value={joinCode}
-              />
-            </label>
-            <button className="btn-secondary" disabled={busy} type="submit">
-              {busy ? '연결 중...' : '합류하기'}
+          <div className="copy-row">
+            <button className="btn-secondary" disabled={!pairingCode} onClick={handleCopy} type="button">
+              {copyLabel}
             </button>
-          </form>
+            <button className="btn-secondary" onClick={() => onLogout()} type="button">
+              로그아웃
+            </button>
+          </div>
         </section>
       </div>
-
-      {error ? <p className="error-banner">{error}</p> : null}
     </div>
   );
 }

@@ -83,6 +83,19 @@ export async function localSignUp(email, password) {
   return getLocalSessionUser();
 }
 
+export async function localDeleteUser(uid) {
+  updateState((current) => {
+    const users = { ...current.users };
+    delete users[uid];
+
+    return {
+      ...current,
+      sessionUid: current.sessionUid === uid ? null : current.sessionUid,
+      users
+    };
+  });
+}
+
 export async function localSignIn(email, password) {
   const normalizedEmail = email.trim().toLowerCase();
   const state = readState();
@@ -112,6 +125,12 @@ export async function localLogOut() {
 export async function localFindCoupleIdForUser(uid) {
   const state = readState();
   return state.users[uid]?.coupleId ?? null;
+}
+
+export async function localFindPairingCodeForOwner(uid) {
+  const state = readState();
+  const entry = Object.entries(state.pairingCodes).find(([, value]) => value.ownerUid === uid);
+  return entry ? entry[0] : null;
 }
 
 export async function localCreateCouple({ uid, anniversary, pairingCode }) {
@@ -158,7 +177,7 @@ export async function localJoinCouple({ uid, code }) {
   const pairing = state.pairingCodes[pairingCode];
 
   if (!pairing) {
-    throw new Error('페어링 코드를 찾을 수 없어.');
+    throw new Error('커플 코드가 없거나 만료됐어.');
   }
 
   const couple = state.couples[pairing.coupleId];
@@ -167,7 +186,7 @@ export async function localJoinCouple({ uid, code }) {
   }
 
   if (!couple.members.includes(uid) && couple.members.length >= 2) {
-    throw new Error('이미 2명이 연결된 커플이야.');
+    throw new Error('이미 두 명이 모두 연결된 커플이야.');
   }
 
   updateState((current) => {

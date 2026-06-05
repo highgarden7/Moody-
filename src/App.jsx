@@ -11,7 +11,7 @@ import { findCoupleIdForUser, useCoupleData } from './hooks/useCoupleData';
 const TABS = [
   { id: 'calendar', label: '캘린더' },
   { id: 'mood', label: '컨디션' },
-  { id: 'dday', label: 'D-day' },
+  { id: 'dday', label: 'D-day' }
 ];
 
 export default function App() {
@@ -79,11 +79,15 @@ export default function App() {
   }
 
   if (!coupleId) {
-    return <PairingScreen onPaired={setCoupleId} user={user} />;
+    return <NoCoupleScreen />;
   }
 
   if (loading || !couple) {
     return <LoadingScreen label="동기화 중..." />;
+  }
+
+  if (couple.members.length < 2) {
+    return <PairingScreen user={user} coupleId={coupleId} onLogout={logOut} />;
   }
 
   return (
@@ -158,6 +162,20 @@ function LoadingScreen({ label }) {
       <div className="loading-card paper-card">
         <div className="spinner" />
         <p>{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function NoCoupleScreen() {
+  return (
+    <div className="screen loading-screen">
+      <div className="loading-card paper-card">
+        <p>이 계정은 아직 커플에 연결되지 않았어.</p>
+        <p className="muted">처음부터 다시 가입하거나, 관리자에게 가입 상태를 확인해줘.</p>
+        <button className="btn-secondary" onClick={() => logOut()} type="button">
+          로그아웃
+        </button>
       </div>
     </div>
   );

@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  limit,
   onSnapshot,
   query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
+  where
 } from 'firebase/firestore';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from '../firebase';
 import { formatDateKey, parseDateKey } from '../lib/date';
 import {
@@ -19,6 +22,7 @@ import {
   localCreateCouple,
   localEditEvent,
   localFindCoupleIdForUser,
+  localFindPairingCodeForOwner,
   localJoinCouple,
   localRemoveDday,
   localRemoveEvent,
@@ -139,6 +143,22 @@ export async function findCoupleIdForUser(uid) {
   return userDoc.exists() ? userDoc.data().coupleId ?? null : null;
 }
 
+export async function findPairingCodeForOwner(uid) {
+  if (!db) {
+    return localFindPairingCodeForOwner(uid);
+  }
+
+  const snapshot = await getDocs(
+    query(collection(db, 'pairingCodes'), where('ownerUid', '==', uid), limit(1))
+  );
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  return snapshot.docs[0].id;
+}
+
 export async function saveUserCouple(uid, coupleId) {
   ensureDb();
   await setDoc(doc(db, 'users', uid), { coupleId }, { merge: true });
@@ -173,7 +193,7 @@ export async function joinCouple({ uid, code }) {
   const pairingSnap = await getDoc(pairingRef);
 
   if (!pairingSnap.exists()) {
-    throw new Error('페어링 코드를 찾을 수 없어.');
+    throw new Error('커플 코드가 없거나 만료됐어.');
   }
 
   const { coupleId } = pairingSnap.data();
@@ -190,7 +210,7 @@ export async function joinCouple({ uid, code }) {
     return coupleId;
   }
   if (members.length >= 2) {
-    throw new Error('이미 2명이 연결된 커플이야.');
+    throw new Error('이미 두 명이 모두 연결된 커플이야.');
   }
 
   await updateDoc(coupleRef, {

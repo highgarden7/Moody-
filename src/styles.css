@@ -286,6 +286,13 @@ strong {
   background: rgba(255, 243, 206, 0.42);
 }
 
+.info-banner {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 243, 206, 0.52);
+  color: var(--primary-ink);
+}
+
 .btn-primary,
 .btn-secondary,
 .btn-ghost,
@@ -395,6 +402,14 @@ strong {
   background: #fffdf7;
   color: #2a2520;
   box-shadow: 0 1px 2px rgba(60, 40, 10, 0.12);
+}
+
+.signup-paths {
+  width: 100%;
+}
+
+.signup-paths button {
+  flex: 1;
 }
 
 .calendar-head {
@@ -692,6 +707,20 @@ strong {
   margin-top: 8px;
   font-size: 28px;
   letter-spacing: 0.12em;
+}
+
+.pairing-wait {
+  display: grid;
+  gap: 16px;
+}
+
+.copy-row {
+  display: flex;
+  gap: 10px;
+}
+
+.copy-row > * {
+  flex: 1;
 }
 
 .inline-checkbox {
