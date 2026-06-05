@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import AuthScreen from './components/AuthScreen';
+import BucketSection from './components/BucketSection';
 import CalendarSection from './components/CalendarSection';
 import DdaySection from './components/DdaySection';
 import PairingScreen from './components/PairingScreen';
@@ -18,6 +19,7 @@ import { checkAndApplyAppUpdate, usePwaUpdate } from './pwaUpdate';
 
 const TABS = [
   { id: 'calendar', label: '캘린더' },
+  { id: 'bucket', label: '버킷리스트' },
   { id: 'dday', label: 'D-day' }
 ];
 
@@ -221,6 +223,16 @@ export default function App() {
               events={events}
               moods={moods}
               ownerColors={ownerColors}
+              toast={setToast}
+            />
+          ) : null}
+
+          {activeTab === 'bucket' ? (
+            <BucketSection
+              coupleId={coupleId}
+              currentUser={user}
+              members={couple.members}
+              refreshToken={refreshNonce}
               toast={setToast}
             />
           ) : null}

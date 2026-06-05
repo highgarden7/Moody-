@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isCoupleMember(coupleId) {
+      return request.auth != null
+        && request.auth.uid in firestore.get(
+          /databases/(default)/documents/couples/$(coupleId)
+        ).data.members;
+    }
+
+    match /couples/{coupleId}/bucket/{allPaths=**} {
+      allow read, write: if isCoupleMember(coupleId);
+    }
+  }
+}

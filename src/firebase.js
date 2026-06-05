@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,6 +25,7 @@ export const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY?.trim() || '';
 let app = null;
 let auth = null;
 let db = null;
+let storage = null;
 let firebaseInitError = '';
 let messagingInstance = null;
 
@@ -32,6 +34,7 @@ if (firebaseConfigReady) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
+    storage = getStorage(app);
   } catch (error) {
     firebaseInitError = error instanceof Error ? error.message : 'Firebase init failed';
   }
@@ -61,4 +64,4 @@ export async function getMessagingInstance() {
   return messagingInstance;
 }
 
-export { app, auth, db, firebaseConfig, firebaseInitError, messagingSupportPromise };
+export { app, auth, db, storage, firebaseConfig, firebaseInitError, messagingSupportPromise };

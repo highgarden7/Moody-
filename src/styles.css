@@ -923,3 +923,179 @@ strong {
     transform: rotate(360deg);
   }
 }
+
+/* 버킷리스트 */
+.bucket-section {
+  --bucket: #e0c088;
+  --bucket-soft: #f2e4c6;
+}
+
+.bucket-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.bucket-add input {
+  flex: 1;
+  min-width: 0;
+}
+
+.bucket-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bucket-card {
+  border: 1px solid var(--bucket, #e0c088);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.bucket-open {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.bucket-card-body {
+  text-align: left;
+  background: transparent;
+  padding: 0;
+  color: var(--text);
+}
+
+.bucket-card-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.bucket-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bucket-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bucket-done {
+  display: flex;
+  flex-direction: column;
+}
+
+.bucket-thumb-btn {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.bucket-thumb-btn img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+.bucket-thumb-empty {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  background: var(--bucket-soft, #f2e4c6);
+  color: var(--note-ink);
+  font-weight: 500;
+}
+
+.bucket-done-title {
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.bucket-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--bucket, #e0c088);
+  color: #3a2e12;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bucket-consent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.bucket-consent.expanded {
+  padding: 4px 0;
+}
+
+.bucket-title-edit,
+.bucket-detail-title {
+  margin-top: 4px;
+}
+
+.bucket-title-edit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.bucket-title-edit input {
+  flex: 1;
+  min-width: 0;
+}
+
+.bucket-detail-title {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.bucket-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bucket-photo {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.bucket-photo img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+.bucket-download {
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.bucket-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.bucket-upload.is-busy {
+  opacity: 0.7;
+  cursor: default;
+}

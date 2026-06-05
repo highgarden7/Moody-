@@ -60,6 +60,39 @@ service cloud.firestore {
         && nextFcmTokens().diff(currentFcmTokens(coupleId)).affectedKeys().hasOnly([request.auth.uid]);
     }
 
+    function bucketOpenToDone() {
+      return resource.data.status == 'open'
+        && request.resource.data.status == 'done'
+        && request.resource.data.completedBy == request.auth.uid
+        && request.resource.data.coverThumbUrl is string
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.deleteVotes == resource.data.deleteVotes;
+    }
+
+    function bucketTitleEdit() {
+      return resource.data.status == 'open'
+        && request.resource.data.status == 'open'
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title']);
+    }
+
+    function bucketVoteToggle() {
+      return resource.data.status == 'done'
+        && request.resource.data.deleteVotes is map
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleteVotes'])
+        && request.resource.data.deleteVotes.diff(resource.data.deleteVotes).addedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.deleteVotes.diff(resource.data.deleteVotes).changedKeys().size() == 0;
+    }
+
+    function bucketAllVotedDelete(coupleId) {
+      let memberList = coupleData(coupleId).members;
+      let votes = resource.data.deleteVotes;
+      return memberList.size() == 2
+        && (memberList[0] in votes) && votes[memberList[0]] == true
+        && (memberList[1] in votes) && votes[memberList[1]] == true;
+    }
+
     match /config/app {
       allow read: if true;
       allow write: if false;
@@ -85,9 +118,44 @@ service cloud.firestore {
       allow update: if isOwnFcmTokenUpdate(coupleId)
         || (signupOpen() && isPairJoinUpdate(coupleId));
 
-      match /{doc=**} {
-        allow read, write: if isSignedIn()
-          && request.auth.uid in get(couplePath(coupleId)).data.members;
+      match /events/{eventId} {
+        allow read, write: if isCoupleMember(coupleId);
+      }
+
+      match /moods/{moodId} {
+        allow read, write: if isCoupleMember(coupleId);
+      }
+
+      match /ddays/{ddayId} {
+        allow read, write: if isCoupleMember(coupleId);
+      }
+
+      match /bucket/{itemId} {
+        allow read: if isCoupleMember(coupleId);
+
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.status == 'open'
+          && !('coverThumbUrl' in request.resource.data)
+          && request.resource.data.deleteVotes is map
+          && request.resource.data.deleteVotes.size() == 0;
+
+        allow update: if isCoupleMember(coupleId)
+          && (bucketOpenToDone() || bucketTitleEdit() || bucketVoteToggle());
+
+        allow delete: if isCoupleMember(coupleId)
+          && (
+            (resource.data.status == 'open' && resource.data.createdBy == request.auth.uid)
+            || (resource.data.status == 'done' && bucketAllVotedDelete(coupleId))
+          );
+
+        match /photos/{photoId} {
+          allow read: if isCoupleMember(coupleId);
+          allow create: if isCoupleMember(coupleId)
+            && request.resource.data.uploadedBy == request.auth.uid;
+          allow update: if false;
+          allow delete: if isCoupleMember(coupleId);
+        }
       }
     }
   }
