@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import { initPwaUpdate } from './pwaUpdate';
 import './styles.css';
 
 function ZoomGuard({ children }) {
@@ -42,3 +43,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+initPwaUpdate();
