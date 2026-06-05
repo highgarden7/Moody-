@@ -197,26 +197,33 @@ export async function joinCouple({ uid, code }) {
     throw new Error('커플 코드가 없거나 만료됐어.');
   }
 
-  const { coupleId } = pairingSnap.data();
-  const coupleRef = doc(db, 'couples', coupleId);
-  const coupleSnap = await getDoc(coupleRef);
+  const { coupleId, ownerUid } = pairingSnap.data();
 
-  if (!coupleSnap.exists()) {
+  if (!ownerUid) {
     throw new Error('커플 정보를 찾을 수 없어.');
   }
 
-  const members = coupleSnap.data().members || [];
-  if (members.includes(uid)) {
+  // joiner는 합류 전이라 couple 문서를 직접 읽을 권한이 없다.
+  // pairingCodes에 담긴 ownerUid(=founder)로 members를 구성하면
+  // isPairJoinUpdate 규칙을 만족하면서 읽기 없이 합류할 수 있다.
+  if (ownerUid === uid) {
     await saveUserCouple(uid, coupleId);
     return coupleId;
   }
-  if (members.length >= 2) {
-    throw new Error('이미 두 명이 모두 연결된 커플이야.');
+
+  const coupleRef = doc(db, 'couples', coupleId);
+
+  try {
+    await updateDoc(coupleRef, {
+      members: [ownerUid, uid]
+    });
+  } catch (error) {
+    if (error?.code === 'permission-denied') {
+      throw new Error('이미 두 명이 모두 연결된 커플이야.');
+    }
+    throw error;
   }
 
-  await updateDoc(coupleRef, {
-    members: [...members, uid]
-  });
   await saveUserCouple(uid, coupleId);
   return coupleId;
 }
