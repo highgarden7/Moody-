@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { findPairingCodeForOwner } from '../hooks/useCoupleData';
+import { getPendingSignupContext } from '../hooks/useAuth';
 
 export default function PairingScreen({ user, coupleId, onLogout }) {
   const [pairingCode, setPairingCode] = useState('');
@@ -7,10 +8,15 @@ export default function PairingScreen({ user, coupleId, onLogout }) {
 
   useEffect(() => {
     let active = true;
+    const pending = getPendingSignupContext();
+
+    if (pending?.uid === user.uid && pending.pairingCode) {
+      setPairingCode(pending.pairingCode);
+    }
 
     findPairingCodeForOwner(user.uid).then((code) => {
-      if (active) {
-        setPairingCode(code ?? '');
+      if (active && code) {
+        setPairingCode(code);
       }
     });
 

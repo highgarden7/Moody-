@@ -5,7 +5,7 @@ import DdaySection from './components/DdaySection';
 import MoodSection from './components/MoodSection';
 import PairingScreen from './components/PairingScreen';
 import { firebaseConfigReady } from './firebase';
-import { logOut, useAuth } from './hooks/useAuth';
+import { clearPendingSignupContext, getPendingSignupContext, logOut, useAuth } from './hooks/useAuth';
 import { findCoupleIdForUser, useCoupleData } from './hooks/useCoupleData';
 
 const TABS = [
@@ -25,6 +25,7 @@ export default function App() {
     if (!user) {
       setCoupleId(null);
       setCheckingCouple(false);
+      clearPendingSignupContext();
       return;
     }
 
@@ -33,9 +34,23 @@ export default function App() {
 
     findCoupleIdForUser(user.uid)
       .then((nextCoupleId) => {
-        if (mounted) {
-          setCoupleId(nextCoupleId);
+        if (!mounted) {
+          return;
         }
+
+        if (nextCoupleId) {
+          setCoupleId(nextCoupleId);
+          clearPendingSignupContext();
+          return;
+        }
+
+        const pending = getPendingSignupContext();
+        if (pending?.uid === user.uid && pending.coupleId) {
+          setCoupleId(pending.coupleId);
+          return;
+        }
+
+        setCoupleId(null);
       })
       .finally(() => {
         if (mounted) {
@@ -172,7 +187,7 @@ function NoCoupleScreen() {
     <div className="screen loading-screen">
       <div className="loading-card paper-card">
         <p>이 계정은 아직 커플에 연결되지 않았어.</p>
-        <p className="muted">처음부터 다시 가입하거나, 관리자에게 가입 상태를 확인해줘.</p>
+        <p className="muted">가입 직후라면 잠시 기다리거나, 다시 로그인해봐.</p>
         <button className="btn-secondary" onClick={() => logOut()} type="button">
           로그아웃
         </button>

@@ -7,7 +7,6 @@ import {
 } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { auth, firebaseConfigReady } from '../firebase';
-import { createCouple, joinCouple } from './useCoupleData';
 import {
   getLocalSessionUser,
   localDeleteUser,
@@ -18,6 +17,9 @@ import {
   subscribeLocalStore
 } from '../lib/localStore';
 import { createPairingCode } from '../lib/pairing';
+import { createCouple, joinCouple } from './useCoupleData';
+
+const PENDING_SIGNUP_KEY = 'moody-pending-signup';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -44,13 +46,37 @@ export function useAuth() {
   return { user, ready };
 }
 
-export async function signUp(email, password) {
-  if (!auth) {
-    await localSignUp(email, password);
+export function getPendingSignupContext() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const raw = window.sessionStorage.getItem(PENDING_SIGNUP_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingSignupContext() {
+  if (typeof window === 'undefined') {
     return;
   }
 
-  await createUserWithEmailAndPassword(auth, email, password);
+  window.sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+}
+
+function setPendingSignupContext(value) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.sessionStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(value));
 }
 
 export async function signUpFounder({ email, password, anniversary }) {
@@ -60,12 +86,13 @@ export async function signUpFounder({ email, password, anniversary }) {
     const localUser = await localSignUp(email, password);
 
     try {
-      await createCouple({
+      const coupleId = await createCouple({
         uid: localUser.uid,
         anniversary: new Date(`${anniversary}T00:00:00`),
         pairingCode
       });
-      return { pairingCode };
+      setPendingSignupContext({ uid: localUser.uid, coupleId, pairingCode, role: 'founder' });
+      return { pairingCode, coupleId };
     } catch (error) {
       await localDeleteUser(localUser.uid);
       throw error;
@@ -75,12 +102,13 @@ export async function signUpFounder({ email, password, anniversary }) {
   const credential = await createUserWithEmailAndPassword(auth, email, password);
 
   try {
-    await createCouple({
+    const coupleId = await createCouple({
       uid: credential.user.uid,
       anniversary: new Date(`${anniversary}T00:00:00`),
       pairingCode
     });
-    return { pairingCode };
+    setPendingSignupContext({ uid: credential.user.uid, coupleId, pairingCode, role: 'founder' });
+    return { pairingCode, coupleId };
   } catch (error) {
     try {
       await deleteUser(credential.user);
@@ -96,8 +124,9 @@ export async function signUpJoiner({ email, password, code }) {
     const localUser = await localSignUp(email, password);
 
     try {
-      await joinCouple({ uid: localUser.uid, code });
-      return;
+      const coupleId = await joinCouple({ uid: localUser.uid, code });
+      setPendingSignupContext({ uid: localUser.uid, coupleId, role: 'joiner' });
+      return { coupleId };
     } catch (error) {
       await localDeleteUser(localUser.uid);
       throw error;
@@ -107,7 +136,9 @@ export async function signUpJoiner({ email, password, code }) {
   const credential = await createUserWithEmailAndPassword(auth, email, password);
 
   try {
-    await joinCouple({ uid: credential.user.uid, code });
+    const coupleId = await joinCouple({ uid: credential.user.uid, code });
+    setPendingSignupContext({ uid: credential.user.uid, coupleId, role: 'joiner' });
+    return { coupleId };
   } catch (error) {
     try {
       await deleteUser(credential.user);
@@ -128,6 +159,8 @@ export async function signIn(email, password) {
 }
 
 export async function logOut() {
+  clearPendingSignupContext();
+
   if (!auth) {
     await localLogOut();
     return;
