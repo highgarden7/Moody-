@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { saveMood } from '../hooks/useCoupleData';
 import { buildWeekDays, formatDateKey } from '../lib/date';
 
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 const MOOD_OPTIONS = [
   { emoji: '😀', label: '좋음' },
   { emoji: '🥰', label: '설렘' },
   { emoji: '😮‍💨', label: '기빨림' },
-  { emoji: '😵', label: '야근각' },
+  { emoji: '😵', label: '과부하' },
   { emoji: '😴', label: '졸림' },
   { emoji: '🔥', label: '의욕' },
-  { emoji: '🤯', label: '과부하' },
+  { emoji: '🤯', label: '야근각' },
   { emoji: '🌧️', label: '다운' },
 ];
 
@@ -33,9 +34,9 @@ export default function MoodSection({ coupleId, currentUser, moods, ownerColors,
 
     try {
       await saveMood(coupleId, currentUser.uid, dateKey, form);
-      toast('컨디션 저장했어.');
+      toast('컨디션을 저장했어.');
     } catch (error) {
-      toast(error.message || '컨디션 저장 실패.');
+      toast(error.message || '컨디션 저장에 실패했어.');
     } finally {
       setBusy(false);
     }
@@ -43,60 +44,48 @@ export default function MoodSection({ coupleId, currentUser, moods, ownerColors,
 
   return (
     <section className="tab-panel">
-      <header className="section-head">
-        <div>
-          <p className="eyebrow">Mood</p>
-          <h2>그날 컨디션</h2>
-        </div>
-      </header>
-
-      <section className="note note-yellow">
-        <p className="eyebrow note-eyebrow">Today</p>
+      <section className="note note-yellow tilt-right">
         <div className="hero-line">
           <strong className="hero-emoji">{myMood?.emoji || form.emoji}</strong>
           <div>
-            <h3>{formatDateKey(selectedDate)}</h3>
+            <h3>{formatSelectedDate(selectedDate)}</h3>
             <p>{myMood?.note || '아직 메모 없음'}</p>
           </div>
         </div>
       </section>
 
-      <section className="panel">
-        <p className="eyebrow">Quick Pick</p>
-        <div className="week-strip mood-strip">
+      <section className="panel paper-card">
+        <div className="week-strip refined">
           {weekDays.map((date) => (
             <button
-              className={[
-                'week-day mood-day',
-                formatDateKey(date) === dateKey ? 'selected' : '',
-              ].join(' ')}
+              className={['week-compact-cell', formatDateKey(date) === dateKey ? 'selected' : ''].join(' ')}
               key={date.toISOString()}
               onClick={() => setSelectedDate(date)}
               type="button"
             >
-              <span className="weekday-label">{['일', '월', '화', '수', '목', '금', '토'][date.getDay()]}</span>
-              <span className="date-number">{date.getDate()}</span>
-              <span className="mini-meta">
-                {Object.values(moods[formatDateKey(date)] || {})
-                  .filter(Boolean)
+              <span className="compact-weekday">{WEEKDAY_LABELS[date.getDay()]}</span>
+              <span className="date-badge">{date.getDate()}</span>
+              <span className="cell-dots">
+                {Object.keys(moods[formatDateKey(date)] || {})
                   .slice(0, 2)
-                  .map((item) => item.emoji)
-                  .join(' ') || '\u00A0'}
+                  .map((uid) => (
+                    <span
+                      className="mood-marker"
+                      key={uid}
+                      style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
+                    />
+                  ))}
               </span>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="panel">
-        <p className="eyebrow">Status</p>
+      <section className="panel paper-card">
         <div className="mood-grid">
           {MOOD_OPTIONS.map((option) => (
             <button
-              className={[
-                'mood-option',
-                form.emoji === option.emoji ? 'selected' : '',
-              ].join(' ')}
+              className={['mood-option', form.emoji === option.emoji ? 'selected' : ''].join(' ')}
               key={option.emoji}
               onClick={() => setForm((current) => ({ ...current, emoji: option.emoji }))}
               type="button"
@@ -109,26 +98,25 @@ export default function MoodSection({ coupleId, currentUser, moods, ownerColors,
 
         <form className="stack mood-form" onSubmit={handleSubmit}>
           <label className="field">
-            <span>한 줄 메모</span>
+            <span>짧은 메모</span>
             <textarea
               maxLength={80}
               onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
-              placeholder="오늘은 야근, 답장 늦을 수 있음"
+              placeholder="오늘은 좀 지침, 퇴근 뒤엔 괜찮을 듯"
               rows={3}
               value={form.note}
             />
           </label>
-          <button className="primary-button" disabled={busy} type="submit">
+          <button className="btn-primary" disabled={busy} type="submit">
             저장
           </button>
         </form>
       </section>
 
-      <section className="panel">
-        <p className="eyebrow">Shared</p>
+      <section className="panel paper-card">
         <div className="shared-moods">
           {Object.entries(dayMoods).length === 0 ? (
-            <p className="muted">아직 아무도 기록 안 했어.</p>
+            <EmptyState label="아직 아무도 컨디션을 남기지 않았어." />
           ) : (
             Object.entries(dayMoods).map(([uid, item]) => (
               <article className="share-row" key={uid}>
@@ -149,5 +137,18 @@ export default function MoodSection({ coupleId, currentUser, moods, ownerColors,
         </div>
       </section>
     </section>
+  );
+}
+
+function formatSelectedDate(date) {
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAY_LABELS[date.getDay()]})`;
+}
+
+function EmptyState({ label }) {
+  return (
+    <div className="empty-state">
+      <img className="empty-state-icon" src="/files/app-icon.svg" alt="" aria-hidden="true" />
+      <p className="muted">{label}</p>
+    </div>
   );
 }

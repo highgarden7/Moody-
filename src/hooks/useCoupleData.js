@@ -13,19 +13,53 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { formatDateKey, parseDateKey } from '../lib/date';
+import {
+  getLocalCoupleSnapshot,
+  localAddEvent,
+  localCreateCouple,
+  localEditEvent,
+  localFindCoupleIdForUser,
+  localJoinCouple,
+  localRemoveDday,
+  localRemoveEvent,
+  localSaveDday,
+  localSaveMood,
+  subscribeLocalStore,
+} from '../lib/localStore';
 
 export function useCoupleData(coupleId) {
   const [couple, setCouple] = useState(null);
   const [events, setEvents] = useState([]);
   const [moods, setMoods] = useState({});
   const [ddays, setDdays] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!coupleId) {
+      setCouple(null);
+      setEvents([]);
+      setMoods({});
+      setDdays([]);
+      setLoading(false);
       return undefined;
     }
 
+    if (!db) {
+      const applyLocalSnapshot = () => {
+        const snapshot = getLocalCoupleSnapshot(coupleId);
+        setCouple(snapshot.couple);
+        setEvents(snapshot.events);
+        setMoods(snapshot.moods);
+        setDdays(snapshot.ddays);
+        setLoading(false);
+      };
+
+      setLoading(true);
+      applyLocalSnapshot();
+      return subscribeLocalStore(applyLocalSnapshot);
+    }
+
+    setLoading(true);
     const unsubs = [];
 
     unsubs.push(
@@ -67,23 +101,23 @@ export function useCoupleData(coupleId) {
     };
   }, [coupleId]);
 
-  const calendarEvents = useMemo(
-    () =>
-      events.map((event) => ({
-        ...event,
-        startDate: event.start.toDate(),
-        endDate: event.end.toDate(),
-      })),
-    [events]
-  );
+  const calendarEvents = useMemo(() => {
+    if (!db) {
+      return events;
+    }
+
+    return events.map((event) => ({
+      ...event,
+      startDate: event.start.toDate(),
+      endDate: event.end.toDate(),
+    }));
+  }, [events]);
 
   const moodEntries = useMemo(() => {
     const next = {};
-
     Object.entries(moods).forEach(([dateKey, value]) => {
       next[dateKey] = value;
     });
-
     return next;
   }, [moods]);
 
@@ -97,15 +131,24 @@ export function useCoupleData(coupleId) {
 }
 
 export async function findCoupleIdForUser(uid) {
+  if (!db) {
+    return localFindCoupleIdForUser(uid);
+  }
+
   const userDoc = await getDoc(doc(db, 'users', uid));
   return userDoc.exists() ? userDoc.data().coupleId ?? null : null;
 }
 
 export async function saveUserCouple(uid, coupleId) {
+  ensureDb();
   await setDoc(doc(db, 'users', uid), { coupleId }, { merge: true });
 }
 
 export async function createCouple({ uid, anniversary, pairingCode }) {
+  if (!db) {
+    return localCreateCouple({ uid, anniversary, pairingCode });
+  }
+
   const coupleRef = doc(collection(db, 'couples'));
   await setDoc(coupleRef, {
     members: [uid],
@@ -122,6 +165,10 @@ export async function createCouple({ uid, anniversary, pairingCode }) {
 }
 
 export async function joinCouple({ uid, code }) {
+  if (!db) {
+    return localJoinCouple({ uid, code });
+  }
+
   const pairingRef = doc(db, 'pairingCodes', code.trim().toUpperCase());
   const pairingSnap = await getDoc(pairingRef);
 
@@ -154,6 +201,10 @@ export async function joinCouple({ uid, code }) {
 }
 
 export async function addEvent(coupleId, payload) {
+  if (!db) {
+    return localAddEvent(coupleId, payload);
+  }
+
   await addDoc(collection(db, 'couples', coupleId, 'events'), {
     ...payload,
     createdAt: serverTimestamp(),
@@ -161,14 +212,26 @@ export async function addEvent(coupleId, payload) {
 }
 
 export async function editEvent(coupleId, eventId, payload) {
+  if (!db) {
+    return localEditEvent(coupleId, eventId, payload);
+  }
+
   await updateDoc(doc(db, 'couples', coupleId, 'events', eventId), payload);
 }
 
 export async function removeEvent(coupleId, eventId) {
+  if (!db) {
+    return localRemoveEvent(coupleId, eventId);
+  }
+
   await deleteDoc(doc(db, 'couples', coupleId, 'events', eventId));
 }
 
 export async function saveMood(coupleId, uid, dateKey, payload) {
+  if (!db) {
+    return localSaveMood(coupleId, uid, dateKey, payload);
+  }
+
   const moodRef = doc(db, 'couples', coupleId, 'moods', dateKey);
   const snapshot = await getDoc(moodRef);
   const current = snapshot.exists() ? snapshot.data() : {};
@@ -184,6 +247,10 @@ export async function saveMood(coupleId, uid, dateKey, payload) {
 }
 
 export async function saveDday(coupleId, payload, ddayId = null) {
+  if (!db) {
+    return localSaveDday(coupleId, payload, ddayId);
+  }
+
   if (ddayId) {
     await updateDoc(doc(db, 'couples', coupleId, 'ddays', ddayId), payload);
     return;
@@ -193,6 +260,10 @@ export async function saveDday(coupleId, payload, ddayId = null) {
 }
 
 export async function removeDday(coupleId, ddayId) {
+  if (!db) {
+    return localRemoveDday(coupleId, ddayId);
+  }
+
   await deleteDoc(doc(db, 'couples', coupleId, 'ddays', ddayId));
 }
 
@@ -211,4 +282,10 @@ export function getMoodForDate(moods, date) {
 
 export function createMoodDate(dateKey) {
   return parseDateKey(dateKey);
+}
+
+function ensureDb() {
+  if (!db) {
+    throw new Error('Firebase 설정이 비어 있거나 잘못됐어.');
+  }
 }

@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import {
-  createCouple,
-  joinCouple,
-} from '../hooks/useCoupleData';
+import { createCouple, joinCouple } from '../hooks/useCoupleData';
 import { createPairingCode } from '../lib/pairing';
 
 export default function PairingScreen({ user, onPaired }) {
@@ -27,7 +24,7 @@ export default function PairingScreen({ user, onPaired }) {
       setCreatedCode(pairingCode);
       onPaired(coupleId);
     } catch (nextError) {
-      setError(nextError.message || '커플 생성에 실패했어.');
+      setError(nextError.message || '커플 공간 생성에 실패했어.');
     } finally {
       setBusy(false);
     }
@@ -55,7 +52,6 @@ export default function PairingScreen({ user, onPaired }) {
     <div className="screen pairing-screen">
       <div className="pairing-grid">
         <section className="panel">
-          <p className="eyebrow">1명째</p>
           <h2>커플 공간 만들기</h2>
           <form className="stack" onSubmit={handleCreate}>
             <label className="field">
@@ -67,7 +63,7 @@ export default function PairingScreen({ user, onPaired }) {
                 value={anniversary}
               />
             </label>
-            <button className="primary-button" disabled={busy} type="submit">
+            <button className="btn-primary" disabled={busy} type="submit">
               {busy ? '생성 중...' : '커플 생성'}
             </button>
           </form>
@@ -78,12 +74,11 @@ export default function PairingScreen({ user, onPaired }) {
               <strong>{createdCode}</strong>
             </div>
           ) : (
-            <p className="muted">생성 후 이 코드를 상대에게 보내면 끝.</p>
+            <p className="muted">코드를 만들어서 상대에게 보내면 된다.</p>
           )}
         </section>
 
         <section className="panel">
-          <p className="eyebrow">2명째</p>
           <h2>코드로 합류</h2>
           <form className="stack" onSubmit={handleJoin}>
             <label className="field">
@@ -95,11 +90,10 @@ export default function PairingScreen({ user, onPaired }) {
                 value={joinCode}
               />
             </label>
-            <button className="secondary-button" disabled={busy} type="submit">
+            <button className="btn-secondary" disabled={busy} type="submit">
               {busy ? '연결 중...' : '합류하기'}
             </button>
           </form>
-          <p className="muted">둘째 기기에서는 만난 날 입력 없이 코드만 넣는다.</p>
         </section>
       </div>
 

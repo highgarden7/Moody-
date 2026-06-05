@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { signIn, signUp } from '../hooks/useAuth';
+import { firebaseConfigReady } from '../firebase';
+import { signIn, signInDemo, signUp } from '../hooks/useAuth';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState('signin');
@@ -25,12 +26,35 @@ export default function AuthScreen() {
     }
   }
 
+  async function handleDemoLogin() {
+    setSubmitting(true);
+    setError('');
+
+    try {
+      await signInDemo();
+    } catch (nextError) {
+      setError(mapAuthError(nextError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <div className="screen auth-screen">
-      <div className="auth-card">
-        <p className="eyebrow">Moody</p>
-        <h1>둘만 쓰는 일정판</h1>
-        <p className="muted">같은 커플 코드로 연결하면 실시간으로 같이 본다.</p>
+    <div className="screen auth-screen auth-screen-offset">
+      <div className="auth-card paper-card auth-paper">
+        <div className="auth-intro auth-brand-intro">
+          <img className="auth-logotype" src="/files/logotype.svg" alt="moody" />
+          <p className="muted">가볍게 같이 보는 하루 기록</p>
+        </div>
+
+        {!firebaseConfigReady ? (
+          <div className="demo-actions">
+            <button className="btn-secondary" disabled={submitting} onClick={handleDemoLogin} type="button">
+              테스트 로그인
+            </button>
+            <p className="muted">데모로 둘러보기</p>
+          </div>
+        ) : null}
 
         <div className="segmented">
           <button
@@ -81,7 +105,7 @@ export default function AuthScreen() {
 
           {error ? <p className="error-text">{error}</p> : null}
 
-          <button className="primary-button" disabled={submitting} type="submit">
+          <button className="btn-primary" disabled={submitting} type="submit">
             {submitting ? '처리 중...' : mode === 'signup' ? '계정 만들기' : '로그인'}
           </button>
         </form>
@@ -91,6 +115,10 @@ export default function AuthScreen() {
 }
 
 function mapAuthError(error) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
   switch (error.code) {
     case 'auth/email-already-in-use':
       return '이미 쓰는 이메일이야.';

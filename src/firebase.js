@@ -11,7 +11,33 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const requiredKeys = [
+  'apiKey',
+  'authDomain',
+  'projectId',
+  'appId',
+];
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const firebaseConfigReady = requiredKeys.every((key) => {
+  const value = firebaseConfig[key];
+  return typeof value === 'string' && value.trim().length > 0;
+});
+
+let app = null;
+let auth = null;
+let db = null;
+let firebaseInitError = '';
+
+if (firebaseConfigReady) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch (error) {
+    firebaseInitError = error instanceof Error ? error.message : 'Firebase init failed';
+  }
+} else {
+  firebaseInitError = 'Firebase env is missing';
+}
+
+export { app, auth, db, firebaseInitError };

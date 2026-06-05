@@ -1,17 +1,10 @@
 import { useMemo, useState } from 'react';
-import {
-  addEvent,
-  editEvent,
-  eventsForDate,
-  removeEvent,
-} from '../hooks/useCoupleData';
+import { addEvent, editEvent, eventsForDate, removeEvent } from '../hooks/useCoupleData';
 import {
   addDays,
   addMonths,
   buildMonthGrid,
   buildWeekDays,
-  formatDateKey,
-  formatDayLabel,
   formatEventDateTime,
   formatMonthLabel,
   fromDateTimeLocalValue,
@@ -49,7 +42,7 @@ export default function CalendarSection({
     [events, selectedDate]
   );
 
-  const selectedDayMoods = moods[formatDateKey(selectedDate)] || {};
+  const selectedDayMoods = moods[toDateInputValue(selectedDate)] || {};
 
   function handleMove(direction) {
     setCursorDate((current) =>
@@ -144,119 +137,160 @@ export default function CalendarSection({
 
   return (
     <section className="tab-panel">
-      <header className="section-head">
-        <div>
-          <p className="eyebrow">Calendar</p>
-          <h2>{formatMonthLabel(cursorDate)}</h2>
-        </div>
-        <div className="header-actions">
-          <div className="segmented">
-            <button
-              className={viewMode === 'week' ? 'active' : ''}
-              onClick={() => setViewMode('week')}
-              type="button"
-            >
-              주
+      <header className="calendar-head">
+        <div className="calendar-head-row">
+          <button className="icon-btn" onClick={() => handleMove(-1)} type="button" aria-label="이전">
+            ‹
+          </button>
+          <h2 className="calendar-title">{formatMonthLabel(cursorDate)}</h2>
+          <button className="icon-btn" onClick={() => handleMove(1)} type="button" aria-label="다음">
+            ›
+          </button>
+          <div className="calendar-head-actions">
+            <button className="btn-ghost" onClick={() => setCursorDate(new Date())} type="button">
+              오늘
             </button>
-            <button
-              className={viewMode === 'month' ? 'active' : ''}
-              onClick={() => setViewMode('month')}
-              type="button"
-            >
-              월
-            </button>
+            <div className="segmented">
+              <button
+                className={viewMode === 'month' ? 'active' : ''}
+                onClick={() => setViewMode('month')}
+                type="button"
+              >
+                월
+              </button>
+              <button
+                className={viewMode === 'week' ? 'active' : ''}
+                onClick={() => setViewMode('week')}
+                type="button"
+              >
+                주
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <section className="panel">
-        <div className="calendar-toolbar">
-          <button className="outline-button" onClick={() => handleMove(-1)} type="button">
-            이전
-          </button>
-          <button className="soft-button" onClick={() => setCursorDate(new Date())} type="button">
-            오늘
-          </button>
-          <button className="outline-button" onClick={() => handleMove(1)} type="button">
-            다음
-          </button>
-        </div>
-
-        <div className={viewMode === 'week' ? 'week-strip' : 'month-grid'}>
-          {visibleDays.map((date) => {
-            const dayEvents = eventsForDate(events, date);
-            const dayMoodIcons = Object.values(moods[formatDateKey(date)] || {})
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((item) => item.emoji)
-              .join(' ');
-            const isToday = isSameDay(date, new Date());
-            const isSelected = isSameDay(date, selectedDate);
-            const inMonth = isSameMonth(date, cursorDate);
-
-            return (
-              <button
-                className={[
-                  viewMode === 'week' ? 'week-day' : 'month-day',
-                  isToday ? 'today' : '',
-                  isSelected ? 'selected' : '',
-                  inMonth ? '' : 'outside',
-                ].join(' ')}
-                key={date.toISOString()}
-                onClick={() => handleSelectDate(date)}
-                type="button"
-              >
-                <span className="weekday-label">{WEEKDAY_LABELS[date.getDay()]}</span>
-                <span className="date-number">{date.getDate()}</span>
-                <span className="mini-meta">{dayMoodIcons || '\u00A0'}</span>
-                <span className="mini-count">
-                  {dayEvents.length > 0 ? `${dayEvents.length}개` : ''}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="panel selected-summary">
-        <div className="summary-row">
-          <div>
-            <p className="eyebrow">Selected Day</p>
-            <h3>{formatDateKey(selectedDate)}</h3>
-          </div>
-          <button className="primary-button" onClick={openCreateForm} type="button">
-            일정 추가
-          </button>
-        </div>
-
-        <div className="mood-inline">
-          {Object.entries(selectedDayMoods).map(([uid, item]) => (
-            <div className="flat-chip" key={uid}>
-              <span
-                className="owner-dot"
-                style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
-              />
-              <span>{uid === currentUser.uid ? '나' : '상대'}</span>
-              <strong>{item.emoji}</strong>
+      <section className="panel paper-card calendar-paper">
+        {viewMode === 'month' ? (
+          <>
+            <div className="weekday-row">
+              {WEEKDAY_LABELS.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
             </div>
-          ))}
-          {Object.keys(selectedDayMoods).length === 0 ? (
-            <p className="muted">아직 컨디션 기록 없음</p>
-          ) : null}
-        </div>
+            <div className="month-grid refined">
+              {visibleDays.map((date) => {
+                const dayEvents = eventsForDate(events, date);
+                const dayMoods = Object.keys(moods[toDateInputValue(date)] || {}).slice(0, 2);
+                const isToday = isSameDay(date, new Date());
+                const isSelected = isSameDay(date, selectedDate);
+                const inMonth = isSameMonth(date, cursorDate);
+
+                return (
+                  <button
+                    className={[
+                      'calendar-date-cell',
+                      isSelected ? 'selected' : '',
+                      inMonth ? '' : 'outside',
+                    ].join(' ')}
+                    key={date.toISOString()}
+                    onClick={() => handleSelectDate(date)}
+                    type="button"
+                  >
+                    <span className={isToday ? 'date-badge today' : 'date-badge'}>{date.getDate()}</span>
+                    <span className="cell-dots">
+                      {dayEvents.length > 0 ? <span className="event-marker" /> : null}
+                      {dayMoods.map((uid) => (
+                        <span
+                          className="mood-marker"
+                          key={uid}
+                          style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
+                        />
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="week-strip refined">
+            {visibleDays.map((date) => {
+              const dayEvents = eventsForDate(events, date);
+              const dayMoods = Object.keys(moods[toDateInputValue(date)] || {}).slice(0, 2);
+              const isToday = isSameDay(date, new Date());
+              const isSelected = isSameDay(date, selectedDate);
+
+              return (
+                <button
+                  className={['week-compact-cell', isSelected ? 'selected' : ''].join(' ')}
+                  key={date.toISOString()}
+                  onClick={() => handleSelectDate(date)}
+                  type="button"
+                >
+                  <span className="compact-weekday">{WEEKDAY_LABELS[date.getDay()]}</span>
+                  <span className={isToday ? 'date-badge today' : 'date-badge'}>{date.getDate()}</span>
+                  <span className="cell-dots">
+                    {dayEvents.length > 0 ? <span className="event-marker" /> : null}
+                    {dayMoods.map((uid) => (
+                      <span
+                        className="mood-marker"
+                        key={uid}
+                        style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
+                      />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      <section className="panel">
+      <section className="note note-yellow tilt-left calendar-note">
         <div className="summary-row">
-          <div>
-            <p className="eyebrow">Events</p>
-            <h3>이 날 일정</h3>
-          </div>
+          <h3>{formatSelectedDate(selectedDate)}</h3>
         </div>
+        {Object.entries(selectedDayMoods).length === 0 ? (
+          <p>아직 남긴 컨디션이 없어.</p>
+        ) : (
+          <div className="mood-note-list">
+            {Object.entries(selectedDayMoods).map(([uid, item]) => (
+              <p key={uid}>
+                <span
+                  className="inline-dot"
+                  style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
+                />
+                {uid === currentUser.uid ? '나' : '상대'} {item.emoji} {item.note}
+              </p>
+            ))}
+          </div>
+        )}
+      </section>
 
+      <section className="panel paper-card">
+        <div className="summary-row summary-row-spread">
+          <h3>일정</h3>
+          {showForm ? (
+            <button className="btn-secondary" onClick={() => setShowForm(false)} type="button">
+              닫기
+            </button>
+          ) : (
+            <button className="btn-secondary" onClick={openCreateForm} type="button">
+              + 일정 추가
+            </button>
+          )}
+        </div>
         <div className="event-list compact">
           {selectedDayEvents.length === 0 ? (
-            <p className="muted">등록된 일정 없음</p>
+            <div className="event-empty">
+              <p className="muted">아직 일정 없음</p>
+              {!showForm ? (
+                <button className="btn-secondary" onClick={openCreateForm} type="button">
+                  + 일정 추가
+                </button>
+              ) : null}
+            </div>
           ) : (
             selectedDayEvents.map((item) => (
               <article className="event-row" key={item.id}>
@@ -270,7 +304,7 @@ export default function CalendarSection({
                     <p className="muted">{formatEventDateTime(item.startDate, item.allDay)}</p>
                   </div>
                 </div>
-                <button className="soft-button" onClick={() => openEditForm(item)} type="button">
+                <button className="btn-secondary" onClick={() => openEditForm(item)} type="button">
                   보기
                 </button>
               </article>
@@ -280,15 +314,9 @@ export default function CalendarSection({
       </section>
 
       {showForm ? (
-        <section className="panel">
+        <section className="panel paper-card">
           <div className="summary-row">
-            <div>
-              <p className="eyebrow">Event Form</p>
-              <h3>{editingEventId ? '일정 수정' : '새 일정'}</h3>
-            </div>
-            <button className="outline-button" onClick={() => setShowForm(false)} type="button">
-              닫기
-            </button>
+            <h3>{editingEventId ? '일정 수정' : '새 일정'}</h3>
           </div>
 
           <form className="stack" onSubmit={handleSaveEvent}>
@@ -378,13 +406,13 @@ export default function CalendarSection({
               </>
             )}
 
-            <button className="primary-button" disabled={busy} type="submit">
-              {editingEventId ? '수정 저장' : '일정 저장'}
+            <button className="btn-primary" disabled={busy} type="submit">
+              {editingEventId ? '수정 저장' : '+ 일정 추가'}
             </button>
 
             {editingEventId ? (
               <button
-                className="danger-button"
+                className="btn-danger-soft"
                 disabled={busy}
                 onClick={() => handleDeleteEvent(editingEventId)}
                 type="button"
@@ -412,4 +440,8 @@ function makeDefaultEventForm(date, ownerUid) {
     startAt: toDateTimeLocalValue(date),
     endAt: toDateTimeLocalValue(end),
   };
+}
+
+function formatSelectedDate(date) {
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAY_LABELS[date.getDay()]})`;
 }

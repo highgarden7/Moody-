@@ -4,7 +4,8 @@ import CalendarSection from './components/CalendarSection';
 import DdaySection from './components/DdaySection';
 import MoodSection from './components/MoodSection';
 import PairingScreen from './components/PairingScreen';
-import { useAuth, logOut } from './hooks/useAuth';
+import { firebaseConfigReady } from './firebase';
+import { useAuth } from './hooks/useAuth';
 import { findCoupleIdForUser, useCoupleData } from './hooks/useCoupleData';
 
 const TABS = [
@@ -70,7 +71,7 @@ export default function App() {
   }, [couple, user]);
 
   if (!ready || checkingCouple) {
-    return <LoadingScreen label="초기화 중..." />;
+    return <LoadingScreen label="불러오는 중..." />;
   }
 
   if (!user) {
@@ -82,21 +83,19 @@ export default function App() {
   }
 
   if (loading || !couple) {
-    return <LoadingScreen label="커플 데이터 동기화 중..." />;
+    return <LoadingScreen label="동기화 중..." />;
   }
 
   return (
     <div className="app-shell mobile-only">
       <header className="app-header">
-        <div>
-          <p className="eyebrow">Moody</p>
-          <h1>무디</h1>
-        </div>
-        <div className="header-meta">
-          <span className="member-badge">{couple.members.length}/2</span>
-          <button className="outline-button small" onClick={() => logOut()} type="button">
-            로그아웃
-          </button>
+        <div className="brand-row">
+          <div className="brand-block">
+            <img className="header-wordmark" src="/files/wordmark.svg" alt="moody" />
+          </div>
+          <div className="header-actions">
+            {!firebaseConfigReady ? <span className="demo-badge">데모 2/2</span> : null}
+          </div>
         </div>
       </header>
 
@@ -153,7 +152,7 @@ export default function App() {
 function LoadingScreen({ label }) {
   return (
     <div className="screen loading-screen">
-      <div className="loading-card">
+      <div className="loading-card paper-card">
         <div className="spinner" />
         <p>{label}</p>
       </div>

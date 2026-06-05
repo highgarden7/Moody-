@@ -34,9 +34,9 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
         repeatEvery: 'none',
       });
       setEditingId(null);
-      toast(editingId ? 'D-day 수정 완료.' : 'D-day 추가 완료.');
+      toast(editingId ? 'D-day를 수정했어.' : 'D-day를 추가했어.');
     } catch (error) {
-      toast(error.message || 'D-day 저장 실패.');
+      toast(error.message || 'D-day 저장에 실패했어.');
     } finally {
       setBusy(false);
     }
@@ -47,9 +47,9 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
 
     try {
       await removeDday(coupleId, ddayId);
-      toast('D-day 삭제 완료.');
+      toast('D-day를 삭제했어.');
     } catch (error) {
-      toast(error.message || 'D-day 삭제 실패.');
+      toast(error.message || 'D-day 삭제에 실패했어.');
     } finally {
       setBusy(false);
     }
@@ -67,17 +67,10 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
 
   return (
     <section className="tab-panel">
-      <header className="section-head">
-        <div>
-          <p className="eyebrow">D-Day</p>
-          <h2>기념일 카운터</h2>
-        </div>
-      </header>
-
       <div className="note-stack">
         {items.slice(0, 2).map((item, index) => (
           <article
-            className={`note ${index % 2 === 0 ? 'note-yellow' : 'note-peach'} ${index % 2 === 0 ? 'tilt-left' : 'tilt-right'}`}
+            className={`note ${index % 2 === 0 ? 'note-yellow tilt-left' : 'note-peach tilt-right'}`}
             key={item.id}
           >
             <span className="counter">{item.counter}</span>
@@ -87,8 +80,7 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
         ))}
       </div>
 
-      <section className="panel">
-        <p className="eyebrow">All Counters</p>
+      <section className="panel paper-card">
         <div className="dday-list">
           {items.map((item) => (
             <article className="dday-row" key={item.id}>
@@ -102,12 +94,9 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel paper-card">
         <div className="summary-row">
-          <div>
-            <p className="eyebrow">Manage</p>
-            <h3>{editingId ? '카운터 수정' : '카운터 추가'}</h3>
-          </div>
+          <h3>{editingId ? '카운터 수정' : '카운터 추가'}</h3>
         </div>
 
         <form className="stack" onSubmit={handleSubmit}>
@@ -143,8 +132,8 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
             </select>
           </label>
 
-          <button className="primary-button" disabled={busy} type="submit">
-            {editingId ? '수정 저장' : '추가'}
+          <button className="btn-primary" disabled={busy} type="submit">
+            {editingId ? '수정 저장' : '+ 추가'}
           </button>
         </form>
 
@@ -158,10 +147,10 @@ export default function DdaySection({ anniversary, coupleId, ddays, toast }) {
                 </div>
               </div>
               <div className="row-actions">
-                <button className="soft-button" onClick={() => handleEdit(item)} type="button">
+                <button className="btn-secondary" onClick={() => handleEdit(item)} type="button">
                   수정
                 </button>
-                <button className="danger-button inline" onClick={() => handleDelete(item.id)} type="button">
+                <button className="btn-danger-soft" onClick={() => handleDelete(item.id)} type="button">
                   삭제
                 </button>
               </div>
