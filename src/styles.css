@@ -448,6 +448,24 @@ strong {
   box-shadow: 0 1px 0 #e4d4a8;
 }
 
+.bell-btn {
+  color: #8a7c5e;
+}
+
+.bell-btn.active {
+  color: #e63b41;
+  border-color: #f2c0bb;
+  box-shadow: 0 3px 0 #f0dada;
+}
+
+.bell-btn.active:active {
+  box-shadow: 0 1px 0 #f0dada;
+}
+
+.bell-btn:disabled {
+  opacity: 0.6;
+}
+
 .segmented {
   background: #eadcbb;
   border-radius: 10px;

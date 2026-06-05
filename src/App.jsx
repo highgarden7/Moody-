@@ -5,7 +5,7 @@ import DdaySection from './components/DdaySection';
 import MoodSection from './components/MoodSection';
 import PairingScreen from './components/PairingScreen';
 import PwaUpdateModal from './components/PwaUpdateModal';
-import PushNotificationCard from './components/PushNotificationCard';
+import NotificationBell from './components/NotificationBell';
 import { firebaseConfigReady } from './firebase';
 import {
   clearPendingSignupContext,
@@ -159,6 +159,16 @@ export default function App() {
             </div>
             <div className="header-actions">
               {!firebaseConfigReady ? <span className="demo-badge">데모 2/2</span> : null}
+              <NotificationBell
+                busy={pushNotifications.busy}
+                enabled={pushNotifications.enabled}
+                onDisable={pushNotifications.disableNotifications}
+                onEnable={pushNotifications.enableNotifications}
+                permission={pushNotifications.permission}
+                reason={pushNotifications.reason}
+                supported={pushNotifications.supported}
+                toast={setToast}
+              />
               <button className="btn-secondary" onClick={() => logOut()} type="button">
                 로그아웃
               </button>
@@ -167,16 +177,6 @@ export default function App() {
         </header>
 
         <main className="app-main">
-          <PushNotificationCard
-            busy={pushNotifications.busy}
-            enabled={pushNotifications.enabled}
-            onDisable={pushNotifications.disableNotifications}
-            onEnable={pushNotifications.enableNotifications}
-            permission={pushNotifications.permission}
-            reason={pushNotifications.reason}
-            supported={pushNotifications.supported}
-          />
-
           {activeTab === 'calendar' ? (
             <CalendarSection
               coupleId={coupleId}

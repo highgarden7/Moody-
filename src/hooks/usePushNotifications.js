@@ -20,6 +20,23 @@ function isStandaloneMode() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 
+async function getTokenOptions() {
+  const options = { vapidKey };
+
+  if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration) {
+        options.serviceWorkerRegistration = registration;
+      }
+    } catch {
+      // 등록을 못 가져오면 FCM 기본 동작으로 진행한다.
+    }
+  }
+
+  return options;
+}
+
 function getSupportState() {
   if (typeof window === 'undefined' || typeof Notification === 'undefined') {
     return {
@@ -109,7 +126,7 @@ export function usePushNotifications({ coupleId, uid, toast }) {
       }
 
       try {
-        const token = await getToken(messaging, { vapidKey });
+        const token = await getToken(messaging, await getTokenOptions());
         if (!active) {
           return;
         }
@@ -160,7 +177,7 @@ export function usePushNotifications({ coupleId, uid, toast }) {
         return;
       }
 
-      const token = await getToken(messaging, { vapidKey });
+      const token = await getToken(messaging, await getTokenOptions());
       if (!token) {
         toast('알림 토큰을 받지 못했어.');
         return;
@@ -169,7 +186,8 @@ export function usePushNotifications({ coupleId, uid, toast }) {
       await saveFcmToken(coupleId, uid, token);
       setEnabled(true);
       toast('알림을 켰어.');
-    } catch {
+    } catch (error) {
+      console.error('[push] enable failed', error);
       toast('알림 설정 중 오류가 났어.');
     } finally {
       setBusy(false);
