@@ -96,6 +96,10 @@ export function formatDayLabel(date) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+export function formatFullDate(date) {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
 export function formatEventDateTime(date, allDay) {
   if (allDay) {
     return formatDateKey(date);

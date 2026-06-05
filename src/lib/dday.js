@@ -1,4 +1,4 @@
-import { diffInDays, daysSince, startOfDay } from './date';
+import { diffInDays, daysSince, startOfDay, formatFullDate } from './date';
 
 export function buildDdayItems(anniversary, ddays) {
   const items = [];
@@ -20,7 +20,7 @@ export function buildDdayItems(anniversary, ddays) {
     items.push({
       id: 'anniversary-next-100',
       label: `${nextMilestone}일`,
-      subtitle: '다음 100일',
+      subtitle: formatFullDate(nextMilestoneDate),
       counter: formatCounter(nextMilestoneDate),
       targetDate: nextMilestoneDate,
     });
@@ -41,7 +41,7 @@ export function buildDdayItems(anniversary, ddays) {
       items.push({
         id: item.id,
         label,
-        subtitle: '100일 반복',
+        subtitle: formatFullDate(nextCycleDate),
         counter: formatCounter(nextCycleDate),
         targetDate: nextCycleDate,
       });
