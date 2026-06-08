@@ -243,10 +243,20 @@ export async function addBucketPhoto(coupleId, itemId, uid, file) {
       } catch {
         // 다른 사진이 먼저 완성 처리한 경우(레이스) 무시
       }
-    } else if ((data.coverThumbUrls || []).length < 3) {
-      await updateDoc(bucketDoc(coupleId, itemId), {
-        coverThumbUrls: arrayUnion(thumbUrl)
-      });
+    } else {
+      const existing = data.coverThumbUrls || [];
+      if (existing.length < 3) {
+        // coverThumbUrls가 없는 기존 데이터는 coverThumbUrl을 첫 원소로 포함시켜 초기화한다.
+        if (existing.length === 0 && data.coverThumbUrl) {
+          await updateDoc(bucketDoc(coupleId, itemId), {
+            coverThumbUrls: [data.coverThumbUrl, thumbUrl]
+          });
+        } else {
+          await updateDoc(bucketDoc(coupleId, itemId), {
+            coverThumbUrls: arrayUnion(thumbUrl)
+          });
+        }
+      }
     }
   }
 
