@@ -129,8 +129,24 @@ export function useDoneBucketItems(coupleId) {
       limit(DONE_PAGE_INITIAL)
     );
 
-    getDocs(q).then((snapshot) => {
-      setItems(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+    getDocs(q).then(async (snapshot) => {
+      const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      // coverThumbUrls 없는 기존 완성 항목은 photos 서브컬렉션에서 썸네일을 읽어 1회 채운다.
+      await Promise.all(
+        docs
+          .filter((item) => item.coverThumbUrl && !item.coverThumbUrls)
+          .map(async (item) => {
+            const photosSnap = await getDocs(query(photosCollection(coupleId, item.id), limit(3)));
+            const thumbUrls = photosSnap.docs.map((d) => d.data().thumbUrl).filter(Boolean);
+            if (thumbUrls.length > 0) {
+              await updateDoc(bucketDoc(coupleId, item.id), { coverThumbUrls: thumbUrls });
+              item.coverThumbUrls = thumbUrls;
+            }
+          })
+      );
+
+      setItems(docs);
       setLastDocRef(snapshot.docs[snapshot.docs.length - 1] || null);
       setHasMore(snapshot.docs.length === DONE_PAGE_INITIAL);
       setLoading(false);
