@@ -1,15 +1,20 @@
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   deleteField,
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  startAfter,
+  updateDoc,
+  where
 } from 'firebase/firestore';
 import {
   deleteObject,
@@ -19,7 +24,7 @@ import {
   uploadBytes
 } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { db, storage } from '../firebase';
 
 const THUMB_OPTIONS = {
@@ -94,6 +99,69 @@ export function useBucketPhotos(coupleId, itemId) {
   return { photos, loading };
 }
 
+const DONE_PAGE_INITIAL = 9;
+const DONE_PAGE_MORE = 6;
+
+export function useDoneBucketItems(coupleId) {
+  const [items, setItems] = useState([]);
+  const [lastDocRef, setLastDocRef] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
+
+  useEffect(() => {
+    if (!coupleId || !db) {
+      setItems([]);
+      setHasMore(false);
+      return;
+    }
+
+    setItems([]);
+    setLastDocRef(null);
+    setHasMore(true);
+    setLoading(true);
+    loadingRef.current = true;
+
+    const q = query(
+      bucketCollection(coupleId),
+      where('status', '==', 'done'),
+      orderBy('completedAt', 'desc'),
+      limit(DONE_PAGE_INITIAL)
+    );
+
+    getDocs(q).then((snapshot) => {
+      setItems(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLastDocRef(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === DONE_PAGE_INITIAL);
+      setLoading(false);
+      loadingRef.current = false;
+    });
+  }, [coupleId]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || !hasMore || !coupleId || !db) return;
+    loadingRef.current = true;
+    setLoading(true);
+
+    const q = query(
+      bucketCollection(coupleId),
+      where('status', '==', 'done'),
+      orderBy('completedAt', 'desc'),
+      startAfter(lastDocRef),
+      limit(DONE_PAGE_MORE)
+    );
+
+    const snapshot = await getDocs(q);
+    setItems((prev) => [...prev, ...snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))]);
+    setLastDocRef(snapshot.docs[snapshot.docs.length - 1] || null);
+    setHasMore(snapshot.docs.length === DONE_PAGE_MORE);
+    setLoading(false);
+    loadingRef.current = false;
+  }, [coupleId, lastDocRef, hasMore]);
+
+  return { items, hasMore, loading, loadMore };
+}
+
 export async function addBucketItem(coupleId, uid, title) {
   ensureReady();
   const trimmed = title.trim();
@@ -159,18 +227,26 @@ export async function addBucketPhoto(coupleId, itemId, uid, file) {
     uploadedAt: serverTimestamp()
   });
 
-  // 첫 사진이면 부모 문서를 완성 처리한다.
+  // 첫 사진이면 완성 처리, 이후 사진은 coverThumbUrls 배열(최대 3장)에 추가한다.
   const itemSnap = await getDoc(bucketDoc(coupleId, itemId));
-  if (itemSnap.exists() && itemSnap.data().status === 'open') {
-    try {
+  if (itemSnap.exists()) {
+    const data = itemSnap.data();
+    if (data.status === 'open') {
+      try {
+        await updateDoc(bucketDoc(coupleId, itemId), {
+          status: 'done',
+          completedBy: uid,
+          completedAt: serverTimestamp(),
+          coverThumbUrl: thumbUrl,
+          coverThumbUrls: [thumbUrl]
+        });
+      } catch {
+        // 다른 사진이 먼저 완성 처리한 경우(레이스) 무시
+      }
+    } else if ((data.coverThumbUrls || []).length < 3) {
       await updateDoc(bucketDoc(coupleId, itemId), {
-        status: 'done',
-        completedBy: uid,
-        completedAt: serverTimestamp(),
-        coverThumbUrl: thumbUrl
+        coverThumbUrls: arrayUnion(thumbUrl)
       });
-    } catch {
-      // 다른 사진이 먼저 완성 처리한 경우(레이스) 무시
     }
   }
 

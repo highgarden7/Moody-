@@ -7,6 +7,7 @@ import {
   setDeleteVote,
   updateBucketTitle,
   useBucketItems,
+  useDoneBucketItems,
   useBucketPhotos,
   downloadOriginal
 } from '../hooks/useBucketData';
@@ -17,19 +18,33 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
   const partnerUid = memberUids.find((uid) => uid !== myUid) || null;
 
   const { items } = useBucketItems(coupleId, refreshToken);
+  const { items: doneItems, hasMore: doneHasMore, loading: doneLoading, loadMore: loadMoreDone } = useDoneBucketItems(coupleId);
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
   const [listTab, setListTab] = useState('open');
   const processedRef = useRef(new Set());
+  const sentinelRef = useRef(null);
 
   const openItems = useMemo(() => items.filter((item) => item.status !== 'done'), [items]);
-  const doneItems = useMemo(() => items.filter((item) => item.status === 'done'), [items]);
+  const allItems = useMemo(() => [...items, ...doneItems], [items, doneItems]);
   const selectedItem = useMemo(
-    () => items.find((item) => item.id === selectedItemId) || null,
-    [items, selectedItemId]
+    () => allItems.find((item) => item.id === selectedItemId) || null,
+    [allItems, selectedItemId]
   );
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMoreDone();
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loadMoreDone]);
 
   // 두 멤버가 모두 삭제에 동의한 done 항목은 실제 삭제를 실행한다.
   useEffect(() => {
@@ -37,10 +52,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
       return;
     }
 
-    items.forEach((item) => {
-      if (item.status !== 'done') {
-        return;
-      }
+    doneItems.forEach((item) => {
       const votes = item.deleteVotes || {};
       const allAgreed = memberUids.every((uid) => votes[uid] === true);
       if (allAgreed && !processedRef.current.has(item.id)) {
@@ -50,7 +62,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
         });
       }
     });
-  }, [items, coupleId, memberUids]);
+  }, [doneItems, coupleId, memberUids]);
 
   async function handleAdd(event) {
     event.preventDefault();
@@ -124,18 +136,20 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
 
   return (
     <section className="tab-panel bucket-section">
-      <section className="panel paper-card">
-        <form className="bucket-add" onSubmit={handleAdd}>
-          <input
-            onChange={(event) => setNewTitle(event.target.value)}
-            placeholder="같이 하고 싶은 거 적어줘"
-            value={newTitle}
-          />
-          <button className="btn-primary" disabled={adding} type="submit">
-            추가
-          </button>
-        </form>
-      </section>
+      {listTab === 'open' && (
+        <section className="panel paper-card">
+          <form className="bucket-add" onSubmit={handleAdd}>
+            <input
+              onChange={(event) => setNewTitle(event.target.value)}
+              placeholder="같이 하고 싶은 거 적어줘"
+              value={newTitle}
+            />
+            <button className="btn-primary" disabled={adding} type="submit">
+              추가
+            </button>
+          </form>
+        </section>
+      )}
 
       <div className="segmented bucket-toggle">
         <button
@@ -195,33 +209,26 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
           <p className="muted">완성한 버킷이 아직 없어.</p>
         </section>
       ) : (
-        <div className="note-stack">
-          {doneItems.map((item, index) => (
-            <article className={`note bucket-note bucket-note-done ${noteTone(index)}`} key={item.id}>
-              <button
-                className="bucket-note-body"
-                onClick={() => setSelectedItemId(item.id)}
-                type="button"
-              >
-                <strong>{item.title}</strong>
-                {item.coverThumbUrl ? (
-                  <img
-                    alt={item.title}
-                    className="bucket-note-photo"
-                    loading="lazy"
-                    src={item.coverThumbUrl}
-                  />
-                ) : null}
-              </button>
-              <DeleteConsent
+        <>
+          <div className="bucket-done-grid">
+            {doneItems.map((item) => (
+              <DoneCard
+                key={item.id}
                 item={item}
                 myUid={myUid}
                 partnerUid={partnerUid}
+                onSelect={() => setSelectedItemId(item.id)}
                 onVote={handleVote}
               />
-            </article>
-          ))}
-        </div>
+            ))}
+          </div>
+          <div ref={sentinelRef} className="bucket-done-sentinel">
+            {doneLoading && <p className="muted" style={{ textAlign: 'center', padding: '12px 0' }}>불러오는 중...</p>}
+            {!doneHasMore && doneItems.length > 0 && (
+              <p className="muted" style={{ textAlign: 'center', padding: '12px 0', fontSize: '13px' }}>모두 불러왔어 ✓</p>
+            )}
+          </div>
+        </>
       )}
     </section>
   );
@@ -229,6 +236,30 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
 
 function noteTone(index) {
   return index % 2 === 0 ? 'note-yellow tilt-left' : 'note-peach tilt-right';
+}
+
+function DoneCard({ item, myUid, partnerUid, onSelect, onVote }) {
+  const thumbs = item.coverThumbUrls || (item.coverThumbUrl ? [item.coverThumbUrl] : []);
+
+  return (
+    <article className="bucket-done-card">
+      <button className="bucket-done-card-btn" onClick={onSelect} type="button">
+        {thumbs.length > 0 ? (
+          <div className="photo-stack">
+            {thumbs.slice(0, 3).map((url, i) => (
+              <div className="photo-stack-layer" key={i} style={{ '--layer': i }}>
+                <img alt="" loading="lazy" src={url} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="photo-stack photo-stack-empty" />
+        )}
+        <span className="bucket-done-card-title">{item.title}</span>
+      </button>
+      <DeleteConsent item={item} myUid={myUid} partnerUid={partnerUid} onVote={onVote} />
+    </article>
+  );
 }
 
 function BucketDetail({

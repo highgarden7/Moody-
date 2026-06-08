@@ -1061,3 +1061,91 @@ strong {
   opacity: 0.7;
   cursor: default;
 }
+
+/* 완성 탭 3열 그리드 */
+.bucket-done-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bucket-done-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bucket-done-card-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.bucket-done-card-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 사진 스택 겹침 효과 */
+.photo-stack {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-bottom: 4px;
+}
+
+.photo-stack-empty {
+  background: var(--surface-2, #ede8df);
+  border-radius: 8px;
+}
+
+.photo-stack-layer {
+  position: absolute;
+  inset: 6px;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(60, 40, 10, 0.2);
+}
+
+.photo-stack-layer:nth-child(1) {
+  transform: rotate(-5deg) translate(-2px, 2px);
+  z-index: 1;
+}
+
+.photo-stack-layer:nth-child(2) {
+  transform: rotate(3deg) translate(2px, 1px);
+  z-index: 2;
+}
+
+.photo-stack-layer:nth-child(3) {
+  transform: rotate(0deg);
+  z-index: 3;
+}
+
+.photo-stack-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bucket-done-sentinel {
+  min-height: 24px;
+}
+
+/* 사진 1장인 경우 겹침 없이 가운데 정렬 */
+.photo-stack:has(.photo-stack-layer:only-child) .photo-stack-layer {
+  transform: none;
+  inset: 0;
+}
