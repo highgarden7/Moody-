@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  addBucketComment,
   addBucketItem,
   addBucketPhoto,
+  deleteBucketComment,
   deleteBucketItemFully,
   deleteBucketPhoto,
   deleteOpenBucketItem,
+  editBucketComment,
   setDeleteVote,
   updateBucketCompletedDate,
   updateBucketTitle,
+  useBucketComments,
   useBucketItems,
   useDoneBucketItems,
   useBucketPhotos,
@@ -300,6 +304,8 @@ function BucketDetail({
 }) {
   const isDone = item.status === 'done';
   const { photos } = useBucketPhotos(coupleId, item.id);
+  const photoLimit = 5;
+  const photosFull = isDone && photos.length >= photoLimit;
   const [titleDraft, setTitleDraft] = useState(item.title);
   const [savingTitle, setSavingTitle] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -376,7 +382,7 @@ function BucketDetail({
           <>
             <h2 className="bucket-detail-title">{item.title}</h2>
             <div className="bucket-date-row">
-              <label className="bucket-date-label">완료날짜</label>
+              <span className="bucket-date-label">완료날짜</span>
               <input
                 className="bucket-date-input"
                 disabled={savingDate}
@@ -409,11 +415,22 @@ function BucketDetail({
       <section className="panel paper-card">
         <div className="summary-row summary-row-spread">
           <h3>사진</h3>
-          <UploadButton
-            busy={uploading}
-            label={isDone ? '사진 추가' : '사진으로 완성하기'}
-            onFiles={(files) => onFiles(item.id, files)}
-          />
+          {photosFull ? (
+            <span className="muted" style={{ fontSize: '13px' }}>최대 {photoLimit}장</span>
+          ) : (
+            <UploadButton
+              busy={uploading}
+              label={isDone ? '사진 추가' : '사진으로 완성하기'}
+              onFiles={(files) => {
+                if (isDone) {
+                  const limited = Array.from(files).slice(0, photoLimit - photos.length);
+                  if (limited.length > 0) onFiles(item.id, limited);
+                } else {
+                  onFiles(item.id, files);
+                }
+              }}
+            />
+          )}
         </div>
 
         {photos.length === 0 ? (
@@ -457,6 +474,10 @@ function BucketDetail({
           />
         )}
       </section>
+
+      {isDone && (
+        <CommentsSection coupleId={coupleId} itemId={item.id} myUid={myUid} toast={toast} />
+      )}
 
       <section className="panel paper-card">
         {isDone ? (
@@ -594,5 +615,204 @@ function UploadButton({ busy, label, onFiles }) {
         type="file"
       />
     </label>
+  );
+}
+
+function CommentsSection({ coupleId, itemId, myUid, toast }) {
+  const { comments } = useBucketComments(coupleId, itemId);
+  const [newText, setNewText] = useState('');
+  const [posting, setPosting] = useState(false);
+
+  const threads = useMemo(() => {
+    const roots = comments.filter((c) => !c.parentId);
+    return roots.map((c) => ({
+      ...c,
+      replies: comments.filter((r) => r.parentId === c.id)
+    }));
+  }, [comments]);
+
+  async function handlePost(e) {
+    e.preventDefault();
+    if (!newText.trim()) return;
+    setPosting(true);
+    try {
+      await addBucketComment(coupleId, itemId, myUid, newText);
+      setNewText('');
+    } catch (err) {
+      toast(err.message || '댓글 작성에 실패했어.');
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  return (
+    <section className="panel paper-card">
+      <h3>댓글</h3>
+
+      {threads.length === 0 && (
+        <p className="muted">아직 댓글이 없어.</p>
+      )}
+
+      <div className="comment-list">
+        {threads.map((comment, i) => (
+          <div className="comment-thread" key={comment.id}>
+            <CommentNote
+              comment={comment}
+              index={i * 2}
+              myUid={myUid}
+              coupleId={coupleId}
+              itemId={itemId}
+              isReply={false}
+              toast={toast}
+            />
+            {comment.replies.map((reply, ri) => (
+              <CommentNote
+                key={reply.id}
+                comment={reply}
+                index={i * 2 + ri + 1}
+                myUid={myUid}
+                coupleId={coupleId}
+                itemId={itemId}
+                isReply={true}
+                toast={toast}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <form className="comment-form" onSubmit={handlePost}>
+        <input
+          onChange={(e) => setNewText(e.target.value)}
+          placeholder="댓글을 남겨봐..."
+          value={newText}
+        />
+        <button className="btn-primary comment-submit" disabled={posting || !newText.trim()} type="submit">
+          작성
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function CommentNote({ comment, index, myUid, coupleId, itemId, isReply, toast }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.text);
+  const [saving, setSaving] = useState(false);
+  const [replying, setReplying] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [postingReply, setPostingReply] = useState(false);
+
+  const isOwn = comment.createdBy === myUid;
+  const noteClass = index % 2 === 0 ? 'note-yellow' : 'note-peach';
+
+  useEffect(() => {
+    if (!editing) setDraft(comment.text);
+  }, [comment.text, editing]);
+
+  async function handleSave() {
+    if (!draft.trim() || draft.trim() === comment.text) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await editBucketComment(coupleId, itemId, comment.id, draft);
+      setEditing(false);
+    } catch (err) {
+      toast(err.message || '수정에 실패했어.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteBucketComment(coupleId, itemId, comment.id);
+    } catch (err) {
+      toast(err.message || '삭제에 실패했어.');
+    }
+  }
+
+  async function handleReply(e) {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    setPostingReply(true);
+    try {
+      await addBucketComment(coupleId, itemId, myUid, replyText, comment.id);
+      setReplyText('');
+      setReplying(false);
+    } catch (err) {
+      toast(err.message || '대댓글 작성에 실패했어.');
+    } finally {
+      setPostingReply(false);
+    }
+  }
+
+  return (
+    <div className={`comment-note-wrap${isReply ? ' comment-reply' : ''}`}>
+      <div className={`comment-postit ${noteClass}`}>
+        {editing ? (
+          <div className="comment-edit-row">
+            <input
+              autoFocus
+              onChange={(e) => setDraft(e.target.value)}
+              value={draft}
+            />
+            <button className="btn-primary comment-submit" disabled={saving} onClick={handleSave} type="button">
+              저장
+            </button>
+            <button
+              className="btn-ghost"
+              onClick={() => { setEditing(false); setDraft(comment.text); }}
+              type="button"
+            >
+              취소
+            </button>
+          </div>
+        ) : (
+          <p className="comment-text">{comment.text}</p>
+        )}
+
+        {comment.updatedAt && !editing && (
+          <span className="comment-meta">(수정됨)</span>
+        )}
+
+        <div className="comment-actions">
+          {!isReply && (
+            <button className="comment-action-btn" onClick={() => setReplying(!replying)} type="button">
+              답글
+            </button>
+          )}
+          {isOwn && !editing && (
+            <>
+              <button className="comment-action-btn" onClick={() => setEditing(true)} type="button">
+                수정
+              </button>
+              <button className="comment-action-btn danger" onClick={handleDelete} type="button">
+                삭제
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {replying && (
+        <form className="comment-reply-form" onSubmit={handleReply}>
+          <input
+            autoFocus
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="답글을 입력해줘..."
+            value={replyText}
+          />
+          <button className="btn-primary comment-submit" disabled={postingReply || !replyText.trim()} type="submit">
+            작성
+          </button>
+          <button className="btn-ghost" onClick={() => setReplying(false)} type="button">
+            취소
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

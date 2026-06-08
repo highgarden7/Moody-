@@ -162,6 +162,20 @@ service cloud.firestore {
           allow update: if false;
           allow delete: if isCoupleMember(coupleId);
         }
+
+        match /comments/{commentId} {
+          allow read: if isCoupleMember(coupleId);
+          allow create: if isCoupleMember(coupleId)
+            && request.resource.data.createdBy == request.auth.uid
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0;
+          allow update: if isCoupleMember(coupleId)
+            && resource.data.createdBy == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt'])
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0;
+          allow delete: if isCoupleMember(coupleId);
+        }
       }
     }
   }

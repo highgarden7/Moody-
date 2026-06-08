@@ -1,4 +1,5 @@
 import {
+  addDoc,
   arrayRemove,
   arrayUnion,
   collection,
@@ -54,6 +55,10 @@ function photosCollection(coupleId, itemId) {
   return collection(db, 'couples', coupleId, 'bucket', itemId, 'photos');
 }
 
+function commentsCollection(coupleId, itemId) {
+  return collection(db, 'couples', coupleId, 'bucket', itemId, 'comments');
+}
+
 export function useBucketItems(coupleId, refreshToken = 0) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -98,6 +103,32 @@ export function useBucketPhotos(coupleId, itemId) {
   }, [coupleId, itemId]);
 
   return { photos, loading };
+}
+
+export function useBucketComments(coupleId, itemId) {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!coupleId || !itemId || !db) {
+      setComments([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      query(commentsCollection(coupleId, itemId), orderBy('createdAt', 'asc')),
+      (snapshot) => {
+        setComments(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [coupleId, itemId]);
+
+  return { comments, loading };
 }
 
 const DONE_PAGE_INITIAL = 9;
@@ -255,7 +286,7 @@ export async function addBucketPhoto(coupleId, itemId, uid, file) {
       }
     } else {
       const existing = data.coverThumbUrls || [];
-      if (existing.length < 3) {
+      if (existing.length < 5) {
         // coverThumbUrls가 없는 기존 데이터는 coverThumbUrl을 첫 원소로 포함시켜 초기화한다.
         if (existing.length === 0 && data.coverThumbUrl) {
           await updateDoc(bucketDoc(coupleId, itemId), {
@@ -318,6 +349,38 @@ export async function deleteBucketPhoto(coupleId, itemId, photo, allPhotos) {
     updates.coverThumbUrl = nextThumb;
   }
   await updateDoc(bucketDoc(coupleId, itemId), updates);
+}
+
+export async function addBucketComment(coupleId, itemId, uid, text, parentId = null) {
+  ensureReady();
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('댓글을 입력해줘.');
+  const data = {
+    text: trimmed,
+    createdBy: uid,
+    createdAt: serverTimestamp()
+  };
+  if (parentId) data.parentId = parentId;
+  await addDoc(commentsCollection(coupleId, itemId), data);
+}
+
+export async function editBucketComment(coupleId, itemId, commentId, text) {
+  ensureReady();
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('댓글을 입력해줘.');
+  await updateDoc(doc(commentsCollection(coupleId, itemId), commentId), {
+    text: trimmed,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteBucketComment(coupleId, itemId, commentId) {
+  ensureReady();
+  const repliesSnap = await getDocs(
+    query(commentsCollection(coupleId, itemId), where('parentId', '==', commentId))
+  );
+  await Promise.allSettled(repliesSnap.docs.map((d) => deleteDoc(d.ref)));
+  await deleteDoc(doc(commentsCollection(coupleId, itemId), commentId));
 }
 
 // 원본을 Blob으로 받아 다운로드를 트리거한다(cross-origin download 속성 회피).

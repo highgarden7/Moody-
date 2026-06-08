@@ -188,7 +188,8 @@ export function usePushNotifications({ coupleId, uid, toast }) {
       toast('알림을 켰어.');
     } catch (error) {
       console.error('[push] enable failed', error);
-      toast('알림 설정 중 오류가 났어.');
+      const detail = error?.code || error?.message || String(error);
+      toast(`알림 오류: ${detail}`);
     } finally {
       setBusy(false);
     }
