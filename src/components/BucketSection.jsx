@@ -424,7 +424,6 @@ function UploadButton({ busy, label, onFiles }) {
       {busy ? '올리는 중...' : label}
       <input
         accept="image/*"
-        capture="environment"
         disabled={busy}
         hidden
         multiple
