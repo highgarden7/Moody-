@@ -294,30 +294,49 @@ export default function CalendarSection({
         ) : (
           <div className="week-strip refined">
             {visibleDays.map((date) => {
+              const dateKey = toDateInputValue(date);
+              const dayMoodData = moods[dateKey] || {};
               const dayEvents = eventsForDate(events, date);
-              const dayMoods = Object.keys(moods[toDateInputValue(date)] || {}).slice(0, 2);
               const isToday = isSameDay(date, new Date());
               const isSelected = isSameDay(date, selectedDate);
 
+              const myCondKey = dayMoodData[myUid]?.condition;
+              const partnerCondKey = partnerUid ? dayMoodData[partnerUid]?.condition : null;
+              const myColor = myCondKey ? (conditionByKey(myCondKey)?.color ?? CELL_BASE) : CELL_BASE;
+              const partnerColor = partnerCondKey
+                ? (conditionByKey(partnerCondKey)?.color ?? CELL_BASE)
+                : CELL_BASE;
+
+              const dayEventOwners = [...new Set(dayEvents.map((e) => e.ownerUid))].slice(0, 2);
+
               return (
                 <button
-                  className={['week-compact-cell', isSelected ? 'selected' : ''].join(' ')}
+                  className={[
+                    'week-compact-cell',
+                    'week-heatmap-cell',
+                    isToday ? 'ring-today' : '',
+                    isSelected ? 'ring-selected' : '',
+                  ].filter(Boolean).join(' ')}
                   key={date.toISOString()}
                   onClick={() => handleSelectDate(date)}
+                  style={{
+                    background: `linear-gradient(135deg, ${myColor} 0% 50%, ${partnerColor} 50% 100%)`
+                  }}
                   type="button"
                 >
-                  <span className="compact-weekday">{WEEKDAY_LABELS[date.getDay()]}</span>
-                  <span className={isToday ? 'date-badge today' : 'date-badge'}>{date.getDate()}</span>
-                  <span className="cell-dots">
-                    {dayEvents.length > 0 ? <span className="event-marker" /> : null}
-                    {dayMoods.map((uid) => (
-                      <span
-                        className="mood-marker"
-                        key={uid}
-                        style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
-                      />
-                    ))}
-                  </span>
+                  <span className="week-weekday-label">{WEEKDAY_LABELS[date.getDay()]}</span>
+                  <span className="week-date-chip">{date.getDate()}</span>
+                  {dayEventOwners.length > 0 && (
+                    <span className="cell-dots-bottom">
+                      {dayEventOwners.map((uid) => (
+                        <span
+                          className="event-dot"
+                          key={uid}
+                          style={{ backgroundColor: ownerColors[uid] || '#d08b2f' }}
+                        />
+                      ))}
+                    </span>
+                  )}
                 </button>
               );
             })}
