@@ -4,6 +4,7 @@ import {
   deleteField,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   limit,
@@ -84,14 +85,22 @@ export function useCoupleData(coupleId, refreshToken = 0) {
       })
     );
 
+    const year = new Date().getFullYear();
     unsubs.push(
-      onSnapshot(query(collection(db, 'couples', coupleId, 'moods')), (snapshot) => {
-        const next = {};
-        snapshot.docs.forEach((item) => {
-          next[item.id] = item.data();
-        });
-        setMoods(next);
-      })
+      onSnapshot(
+        query(
+          collection(db, 'couples', coupleId, 'moods'),
+          where(documentId(), '>=', `${year}-01-01`),
+          where(documentId(), '<=', `${year}-12-31`)
+        ),
+        (snapshot) => {
+          const next = {};
+          snapshot.docs.forEach((item) => {
+            next[item.id] = item.data();
+          });
+          setMoods(next);
+        }
+      )
     );
 
     unsubs.push(
@@ -261,17 +270,7 @@ export async function saveMood(coupleId, uid, dateKey, payload) {
   }
 
   const moodRef = doc(db, 'couples', coupleId, 'moods', dateKey);
-  const snapshot = await getDoc(moodRef);
-  const current = snapshot.exists() ? snapshot.data() : {};
-
-  await setDoc(
-    moodRef,
-    {
-      ...current,
-      [uid]: payload
-    },
-    { merge: true }
-  );
+  await setDoc(moodRef, { [uid]: payload }, { merge: true });
 }
 
 export async function saveDday(coupleId, payload, ddayId = null) {

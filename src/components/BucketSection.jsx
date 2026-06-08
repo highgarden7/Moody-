@@ -19,22 +19,29 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
   const memberUids = Array.isArray(members) ? members : [];
   const partnerUid = memberUids.find((uid) => uid !== myUid) || null;
 
-  const { items } = useBucketItems(coupleId, refreshToken);
-  const { items: doneItems, hasMore: doneHasMore, loading: doneLoading, loadMore: loadMoreDone } = useDoneBucketItems(coupleId);
+  const { items: openItems } = useBucketItems(coupleId, refreshToken);
+  const [listTab, setListTab] = useState('open');
+  const [doneEnabled, setDoneEnabled] = useState(false);
+  const { items: doneItems, hasMore: doneHasMore, loading: doneLoading, loadMore: loadMoreDone, reload: reloadDone } = useDoneBucketItems(coupleId, doneEnabled);
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
-  const [listTab, setListTab] = useState('open');
   const processedRef = useRef(new Set());
   const sentinelRef = useRef(null);
 
-  const openItems = useMemo(() => items.filter((item) => item.status !== 'done'), [items]);
-  const allItems = useMemo(() => [...items, ...doneItems], [items, doneItems]);
+  // selectedItem: open 목록에서 먼저 찾고, 없으면 done 목록에서 찾음
   const selectedItem = useMemo(
-    () => allItems.find((item) => item.id === selectedItemId) || null,
-    [allItems, selectedItemId]
+    () => openItems.find((i) => i.id === selectedItemId)
+      || doneItems.find((i) => i.id === selectedItemId)
+      || null,
+    [openItems, doneItems, selectedItemId]
   );
+
+  function openDoneTab() {
+    setListTab('done');
+    setDoneEnabled(true);
+  }
 
   useEffect(() => {
     if (!sentinelRef.current) return;
@@ -82,15 +89,20 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
 
   async function handleFiles(itemId, fileList) {
     const files = Array.from(fileList || []);
-    if (files.length === 0) {
-      return;
-    }
+    if (files.length === 0) return;
+    const wasOpen = openItems.some((i) => i.id === itemId);
     setUploadingId(itemId);
     try {
       for (const file of files) {
         await addBucketPhoto(coupleId, itemId, myUid, file);
       }
       toast('사진을 추가했어.');
+      if (wasOpen) {
+        // open→done 전환: 완성탭으로 이동하고 목록 갱신
+        setSelectedItemId(null);
+        openDoneTab();
+        reloadDone();
+      }
     } catch (error) {
       toast(error.message || '사진 업로드에 실패했어.');
     } finally {
@@ -163,7 +175,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
         </button>
         <button
           className={listTab === 'done' ? 'active' : ''}
-          onClick={() => setListTab('done')}
+          onClick={openDoneTab}
           type="button"
         >
           완성

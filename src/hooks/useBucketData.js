@@ -14,7 +14,8 @@ import {
   serverTimestamp,
   setDoc,
   startAfter,
-  updateDoc
+  updateDoc,
+  where
 } from 'firebase/firestore';
 import {
   deleteObject,
@@ -65,7 +66,7 @@ export function useBucketItems(coupleId, refreshToken = 0) {
     }
 
     setLoading(true);
-    const unsubscribe = onSnapshot(query(bucketCollection(coupleId)), (snapshot) => {
+    const unsubscribe = onSnapshot(query(bucketCollection(coupleId), where('status', '==', 'open')), (snapshot) => {
       setItems(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
       setLoading(false);
     });
@@ -102,19 +103,17 @@ export function useBucketPhotos(coupleId, itemId) {
 const DONE_PAGE_INITIAL = 9;
 const DONE_PAGE_MORE = 6;
 
-export function useDoneBucketItems(coupleId) {
+// enabled: 완성탭이 처음 열릴 때만 true가 되어, 그 이전에는 fetch하지 않음
+export function useDoneBucketItems(coupleId, enabled) {
   const [items, setItems] = useState([]);
   const [lastDocRef, setLastDocRef] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [version, setVersion] = useState(0);
   const loadingRef = useRef(false);
 
   useEffect(() => {
-    if (!coupleId || !db) {
-      setItems([]);
-      setHasMore(false);
-      return;
-    }
+    if (!enabled || !coupleId || !db) return;
 
     setItems([]);
     setLastDocRef(null);
@@ -135,7 +134,7 @@ export function useDoneBucketItems(coupleId) {
       setLoading(false);
       loadingRef.current = false;
     });
-  }, [coupleId]);
+  }, [coupleId, enabled, version]);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore || !coupleId || !db) return;
@@ -157,7 +156,13 @@ export function useDoneBucketItems(coupleId) {
     loadingRef.current = false;
   }, [coupleId, lastDocRef, hasMore]);
 
-  return { items, hasMore, loading, loadMore };
+  // 새 아이템 완성 후 목록 갱신이 필요할 때 호출
+  const reload = useCallback(() => {
+    loadingRef.current = false;
+    setVersion((v) => v + 1);
+  }, []);
+
+  return { items, hasMore, loading, loadMore, reload };
 }
 
 export async function addBucketItem(coupleId, uid, title) {
