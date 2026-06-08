@@ -2,7 +2,7 @@
 
 const admin = require('firebase-admin');
 const logger = require('firebase-functions/logger');
-const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 
 admin.initializeApp();
@@ -35,6 +35,11 @@ const MOOD_REMINDER_1250 = {
 const MOOD_REMINDER_2320 = {
   title: '오늘의 Moody',
   body: '오늘의 Moody를 아직 기록하지 않았어요. 오늘이 지나기 전에 남겨보세요'
+};
+
+const DELETION_NOTICE_MESSAGE = {
+  title: 'moody',
+  body: '상대가 탈퇴했어요. 3일 후 모든 데이터가 영구 삭제됩니다'
 };
 
 const DDAY_MESSAGES = {
@@ -164,6 +169,155 @@ exports.notifyOnEventCreate = onDocumentCreated(
     await sendMessagesToTokenEntries(coupleRef, targetEntries, RECORD_MESSAGE, 'event');
   }
 );
+
+exports.onCoupleUpdateForDeletion = onDocumentUpdated(
+  {
+    region: REGION,
+    document: 'couples/{coupleId}'
+  },
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    const { coupleId } = event.params;
+
+    if (before.deletionStatus === after.deletionStatus) {
+      return;
+    }
+
+    // 'requested' → 일정 예약 + 신청자 Auth 즉시 삭제 + 상대 FCM
+    if (after.deletionStatus === 'requested') {
+      const requestedByUid = after.deletionRequestedBy;
+      const requestedAt = after.deletionRequestedAt?.toDate?.() ?? new Date();
+      const scheduledAt = new Date(requestedAt.getTime() + 3 * DAY_MS);
+
+      try {
+        await event.data.after.ref.update({
+          deletionStatus: 'scheduled',
+          deletionScheduledAt: admin.firestore.Timestamp.fromDate(scheduledAt)
+        });
+      } catch (err) {
+        logger.error('Failed to set scheduledAt', { coupleId, error: err.message });
+      }
+
+      const coupleSnap = await db.collection('couples').doc(coupleId).get();
+      if (coupleSnap.exists) {
+        const partnerEntries = getPartnerTokenEntries(coupleSnap.data(), [requestedByUid]);
+        if (partnerEntries.length > 0) {
+          await sendMessagesToTokenEntries(
+            coupleSnap.ref,
+            partnerEntries,
+            DELETION_NOTICE_MESSAGE,
+            'deletion'
+          );
+        }
+      }
+
+      try {
+        await admin.auth().deleteUser(requestedByUid);
+      } catch (err) {
+        logger.warn('Requestor auth delete failed', { requestedByUid, code: err.code });
+      }
+
+      return;
+    }
+
+    // 'delete_now' → 즉시 전체 삭제
+    if (after.deletionStatus === 'delete_now') {
+      const members = Array.isArray(after.members) ? after.members : [];
+      const requestedBy = after.deletionRequestedBy;
+      const remaining = members.filter((uid) => uid !== requestedBy);
+      await purgeCouple(coupleId, remaining);
+    }
+  }
+);
+
+exports.dailyCleanup = onSchedule(
+  {
+    region: REGION,
+    schedule: '0 4 * * *',
+    timeZone: 'Asia/Seoul'
+  },
+  async () => {
+    const now = new Date();
+    const couplesSnap = await db.collection('couples').get();
+
+    for (const coupleDoc of couplesSnap.docs) {
+      const data = coupleDoc.data();
+      const coupleId = coupleDoc.id;
+
+      // (A) 탈퇴 만료: scheduledAt <= now
+      if (data.deletionStatus === 'scheduled') {
+        const scheduledAt = data.deletionScheduledAt?.toDate?.();
+        if (scheduledAt && scheduledAt <= now) {
+          const members = Array.isArray(data.members) ? data.members : [];
+          const remaining = members.filter((uid) => uid !== data.deletionRequestedBy);
+          await purgeCouple(coupleId, remaining);
+        }
+        continue;
+      }
+
+      // (B) 고아 커플: 멤버 1명 + 생성 4일 이상
+      if (!data.deletionStatus && Array.isArray(data.members) && data.members.length === 1) {
+        const createdAt = data.createdAt?.toDate?.();
+        if (createdAt && now.getTime() - createdAt.getTime() >= 4 * DAY_MS) {
+          await purgeCouple(coupleId, data.members);
+        }
+      }
+    }
+
+    logger.info('dailyCleanup complete');
+  }
+);
+
+async function purgeCouple(coupleId, memberUids) {
+  logger.info('purgeCouple start', { coupleId, memberUids });
+
+  // 1. Storage 파일 삭제
+  try {
+    const bucket = admin.storage().bucket();
+    const [files] = await bucket.getFiles({ prefix: `couples/${coupleId}/` });
+    await Promise.allSettled(files.map((file) => file.delete()));
+    logger.info('Storage purged', { coupleId, count: files.length });
+  } catch (err) {
+    logger.error('Storage purge failed', { coupleId, error: err.message });
+  }
+
+  // 2. pairingCodes 삭제
+  try {
+    const codesSnap = await db.collection('pairingCodes').where('coupleId', '==', coupleId).get();
+    await Promise.allSettled(codesSnap.docs.map((d) => d.ref.delete()));
+  } catch (err) {
+    logger.error('PairingCodes purge failed', { coupleId, error: err.message });
+  }
+
+  // 3. users/{uid} 문서 삭제
+  await Promise.allSettled(
+    memberUids.map((uid) =>
+      db.collection('users').doc(uid).delete().catch((err) => {
+        logger.warn('User doc delete failed', { uid, error: err.message });
+      })
+    )
+  );
+
+  // 4. couples/{coupleId} 재귀 삭제
+  try {
+    await db.recursiveDelete(db.collection('couples').doc(coupleId));
+    logger.info('Couple recursive delete done', { coupleId });
+  } catch (err) {
+    logger.error('Couple recursive delete failed', { coupleId, error: err.message });
+  }
+
+  // 5. Auth 계정 삭제
+  await Promise.allSettled(
+    memberUids.map((uid) =>
+      admin.auth().deleteUser(uid).catch((err) => {
+        logger.warn('Auth delete failed', { uid, code: err.code });
+      })
+    )
+  );
+
+  logger.info('purgeCouple complete', { coupleId });
+}
 
 exports.notifyMoodReminder1250 = onSchedule(
   {

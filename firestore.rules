@@ -91,6 +91,28 @@ service cloud.firestore {
             .hasOnly(['coverThumbUrls', 'coverThumbUrl', 'completedDate']);
     }
 
+    function canRequestDeletion(coupleId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      return isCoupleMember(coupleId)
+        && !('deletionStatus' in before)
+        && after.deletionStatus == 'requested'
+        && after.deletionRequestedBy == request.auth.uid
+        && after.deletionRequestedAt is timestamp
+        && after.diff(before).affectedKeys()
+             .hasOnly(['deletionStatus', 'deletionRequestedBy', 'deletionRequestedAt']);
+    }
+
+    function canSetDeleteNow(coupleId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      return isCoupleMember(coupleId)
+        && before.deletionStatus == 'scheduled'
+        && before.deletionRequestedBy != request.auth.uid
+        && after.deletionStatus == 'delete_now'
+        && after.diff(before).affectedKeys().hasOnly(['deletionStatus']);
+    }
+
     function isKstToday(dateId) {
       let kst = request.time + duration.value(9, 'h');
       let rawM = kst.month();
@@ -131,7 +153,9 @@ service cloud.firestore {
       allow create: if signupOpen() && isCreatingOwnCouple();
       allow read, delete: if isCoupleMember(coupleId);
       allow update: if isOwnFcmTokenUpdate(coupleId)
-        || (signupOpen() && isPairJoinUpdate(coupleId));
+        || (signupOpen() && isPairJoinUpdate(coupleId))
+        || canRequestDeletion(coupleId)
+        || canSetDeleteNow(coupleId);
 
       match /events/{eventId} {
         allow read, write: if isCoupleMember(coupleId);

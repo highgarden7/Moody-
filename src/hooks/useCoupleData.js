@@ -325,6 +325,22 @@ export function createMoodDate(dateKey) {
   return parseDateKey(dateKey);
 }
 
+export async function requestCoupleDeletion(coupleId, uid) {
+  ensureDb();
+  await setDoc(doc(db, 'couples', coupleId), {
+    deletionRequestedBy: uid,
+    deletionRequestedAt: serverTimestamp(),
+    deletionStatus: 'requested',
+  }, { merge: true });
+}
+
+export async function setCoupleDeletionNow(coupleId) {
+  ensureDb();
+  await setDoc(doc(db, 'couples', coupleId), {
+    deletionStatus: 'delete_now',
+  }, { merge: true });
+}
+
 function ensureDb() {
   if (!db) {
     throw new Error('Firebase 설정이 비어 있거나 잘못됐어.');
