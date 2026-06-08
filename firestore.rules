@@ -129,7 +129,17 @@ service cloud.firestore {
       }
 
       match /moods/{moodId} {
-        allow read, write: if isCoupleMember(coupleId);
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly([request.auth.uid])
+          && request.resource.data[request.auth.uid] is map
+          && request.resource.data[request.auth.uid].condition in
+             ['spark', 'warm', 'miss', 'good', 'pat', 'drained', 'alone', 'down'];
+        allow update: if isCoupleMember(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([request.auth.uid])
+          && request.resource.data[request.auth.uid] is map
+          && request.resource.data[request.auth.uid].condition in
+             ['spark', 'warm', 'miss', 'good', 'pat', 'drained', 'alone', 'down'];
       }
 
       match /ddays/{ddayId} {

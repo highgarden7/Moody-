@@ -270,7 +270,7 @@ export async function saveMood(coupleId, uid, dateKey, payload) {
   }
 
   const moodRef = doc(db, 'couples', coupleId, 'moods', dateKey);
-  await setDoc(moodRef, { [uid]: payload }, { merge: true });
+  await setDoc(moodRef, { [uid]: { ...payload, updatedAt: serverTimestamp() } }, { merge: true });
 }
 
 export async function saveDday(coupleId, payload, ddayId = null) {

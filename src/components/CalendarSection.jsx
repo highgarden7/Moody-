@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CONDITIONS, conditionByKey } from '../conditions';
 import { addEvent, editEvent, eventsForDate, removeEvent, saveMood } from '../hooks/useCoupleData';
 import {
   addDays,
@@ -15,16 +16,8 @@ import {
 } from '../lib/date';
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
-const MOOD_OPTIONS = [
-  { emoji: '😀', label: '좋음' },
-  { emoji: '🥰', label: '설렘' },
-  { emoji: '😮‍💨', label: '기빨림' },
-  { emoji: '😵', label: '과부하' },
-  { emoji: '😴', label: '졸림' },
-  { emoji: '🔥', label: '의욕' },
-  { emoji: '🤯', label: '야근각' },
-  { emoji: '🌧️', label: '다운' }
-];
+const WARM_KEYS = new Set(['spark', 'warm', 'miss', 'good']);
+const CELL_BASE = '#EFEAE0';
 
 export default function CalendarSection({
   coupleId,
@@ -42,7 +35,7 @@ export default function CalendarSection({
   const [busy, setBusy] = useState(false);
   const [eventForm, setEventForm] = useState(makeDefaultEventForm(new Date(), currentUser.uid));
   const [showMoodForm, setShowMoodForm] = useState(false);
-  const [moodForm, setMoodForm] = useState({ emoji: '😀', note: '' });
+  const [moodForm, setMoodForm] = useState({ condition: 'good', note: '' });
   const [moodBusy, setMoodBusy] = useState(false);
 
   const visibleDays = useMemo(
@@ -55,9 +48,34 @@ export default function CalendarSection({
     [events, selectedDate]
   );
 
+  const myUid = currentUser.uid;
+  const partnerUid = Object.keys(ownerColors).find((uid) => uid !== myUid) ?? null;
+
   const selectedDateKey = toDateInputValue(selectedDate);
   const selectedDayMoods = moods[selectedDateKey] || {};
-  const myMood = selectedDayMoods[currentUser.uid];
+  const myMood = selectedDayMoods[myUid];
+
+  const monthlySummary = useMemo(() => {
+    if (!partnerUid) return null;
+    let warmDays = 0;
+    let crossedDays = 0;
+    const year = cursorDate.getFullYear();
+    const month = cursorDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateKey = toDateInputValue(new Date(year, month, d));
+      const dayData = moods[dateKey];
+      if (!dayData) continue;
+      const myEntry = dayData[myUid];
+      const partnerEntry = dayData[partnerUid];
+      if (!myEntry?.condition || !partnerEntry?.condition) continue;
+      const myWarm = WARM_KEYS.has(myEntry.condition);
+      const partnerWarm = WARM_KEYS.has(partnerEntry.condition);
+      if (myWarm && partnerWarm) warmDays++;
+      else if (myWarm !== partnerWarm) crossedDays++;
+    }
+    return { warmDays, crossedDays };
+  }, [moods, cursorDate, myUid, partnerUid]);
 
   function handleMove(direction) {
     setCursorDate((current) =>
@@ -74,7 +92,10 @@ export default function CalendarSection({
   }
 
   function openMoodForm() {
-    setMoodForm(myMood || { emoji: '😀', note: '' });
+    setMoodForm({
+      condition: myMood?.condition || 'good',
+      note: myMood?.note || ''
+    });
     setShowMoodForm(true);
   }
 
@@ -216,38 +237,59 @@ export default function CalendarSection({
             </div>
             <div className="month-grid refined">
               {visibleDays.map((date) => {
+                const dateKey = toDateInputValue(date);
+                const dayMoodData = moods[dateKey] || {};
                 const dayEvents = eventsForDate(events, date);
-                const dayMoods = Object.keys(moods[toDateInputValue(date)] || {}).slice(0, 2);
                 const isToday = isSameDay(date, new Date());
                 const isSelected = isSameDay(date, selectedDate);
                 const inMonth = isSameMonth(date, cursorDate);
+
+                const myCondKey = dayMoodData[myUid]?.condition;
+                const partnerCondKey = partnerUid ? dayMoodData[partnerUid]?.condition : null;
+                const myColor = myCondKey ? (conditionByKey(myCondKey)?.color ?? CELL_BASE) : CELL_BASE;
+                const partnerColor = partnerCondKey
+                  ? (conditionByKey(partnerCondKey)?.color ?? CELL_BASE)
+                  : CELL_BASE;
+
+                const dayEventOwners = [...new Set(dayEvents.map((e) => e.ownerUid))].slice(0, 2);
 
                 return (
                   <button
                     className={[
                       'calendar-date-cell',
-                      isSelected ? 'selected' : '',
+                      'heatmap-cell',
+                      isToday ? 'ring-today' : '',
+                      isSelected ? 'ring-selected' : '',
                       inMonth ? '' : 'outside',
-                    ].join(' ')}
+                    ].filter(Boolean).join(' ')}
                     key={date.toISOString()}
                     onClick={() => handleSelectDate(date)}
+                    style={{
+                      background: `linear-gradient(135deg, ${myColor} 0% 50%, ${partnerColor} 50% 100%)`
+                    }}
                     type="button"
                   >
-                    <span className={isToday ? 'date-badge today' : 'date-badge'}>{date.getDate()}</span>
-                    <span className="cell-dots">
-                      {dayEvents.length > 0 ? <span className="event-marker" /> : null}
-                      {dayMoods.map((uid) => (
-                        <span
-                          className="mood-marker"
-                          key={uid}
-                          style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
-                        />
-                      ))}
-                    </span>
+                    <span className="date-chip">{date.getDate()}</span>
+                    {dayEventOwners.length > 0 && (
+                      <span className="cell-dots-bottom">
+                        {dayEventOwners.map((uid) => (
+                          <span
+                            className="event-dot"
+                            key={uid}
+                            style={{ backgroundColor: ownerColors[uid] || '#d08b2f' }}
+                          />
+                        ))}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
+            {monthlySummary && (monthlySummary.warmDays > 0 || monthlySummary.crossedDays > 0) && (
+              <p className="month-summary-line">
+                이번 달 둘 다 따뜻한 날 {monthlySummary.warmDays} · 엇갈린 날 {monthlySummary.crossedDays}
+              </p>
+            )}
           </>
         ) : (
           <div className="week-strip refined">
@@ -291,15 +333,23 @@ export default function CalendarSection({
           <p>아직 남긴 컨디션이 없어.</p>
         ) : (
           <div className="mood-note-list">
-            {Object.entries(selectedDayMoods).map(([uid, item]) => (
-              <p key={uid}>
-                <span
-                  className="inline-dot"
-                  style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
-                />
-                {uid === currentUser.uid ? '나' : '상대'} {item.emoji} {item.note}
-              </p>
-            ))}
+            {Object.entries(selectedDayMoods).map(([uid, item]) => {
+              const cond = conditionByKey(item.condition);
+              const moodTag = cond
+                ? `${cond.emoji} ${cond.label}`
+                : (item.emoji || '');
+              return (
+                <p key={uid}>
+                  <span
+                    className="inline-dot"
+                    style={{ backgroundColor: ownerColors[uid] || 'var(--text-mute)' }}
+                  />
+                  {uid === currentUser.uid ? '나' : '상대'}
+                  {moodTag ? ` ${moodTag}` : ''}
+                  {item.note ? ` ${item.note}` : ''}
+                </p>
+              );
+            })}
           </div>
         )}
       </section>
@@ -320,18 +370,26 @@ export default function CalendarSection({
 
         {showMoodForm ? (
           <>
-            <div className="mood-grid">
-              {MOOD_OPTIONS.map((option) => (
-                <button
-                  className={['mood-option', moodForm.emoji === option.emoji ? 'selected' : ''].join(' ')}
-                  key={option.emoji}
-                  onClick={() => setMoodForm((current) => ({ ...current, emoji: option.emoji }))}
-                  type="button"
-                >
-                  <span>{option.emoji}</span>
-                  <span>{option.label}</span>
-                </button>
-              ))}
+            <div className="condition-grid">
+              {CONDITIONS.map((cond) => {
+                const isSelected = moodForm.condition === cond.key;
+                return (
+                  <button
+                    className={['condition-tile', isSelected ? 'selected' : ''].join(' ')}
+                    key={cond.key}
+                    onClick={() => setMoodForm((c) => ({ ...c, condition: cond.key }))}
+                    style={{
+                      backgroundColor: cond.color + (isSelected ? '44' : '1a'),
+                      borderColor: isSelected ? cond.color : 'transparent',
+                    }}
+                    type="button"
+                  >
+                    <span className="condition-emoji">{cond.emoji}</span>
+                    <span className="condition-label">{cond.label}</span>
+                    <span className="condition-cue">{cond.cue}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <form className="stack mood-form" onSubmit={handleSaveMood}>
