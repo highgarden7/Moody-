@@ -1062,6 +1062,96 @@ strong {
   cursor: default;
 }
 
+.bucket-photo-thumb-btn {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* 라이트박스 */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.lightbox-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.lightbox-img {
+  max-width: min(90vw, 600px);
+  max-height: 80dvh;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -40px;
+  right: -8px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+  opacity: 0.8;
+}
+
+.lightbox-close:hover {
+  opacity: 1;
+}
+
+.lightbox-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.lightbox-nav-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  font-size: 32px;
+  line-height: 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-nav-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.lightbox-counter {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  min-width: 48px;
+  text-align: center;
+}
+
 /* 완성 탭 3열 그리드 */
 .bucket-done-grid {
   display: grid;
@@ -1106,61 +1196,37 @@ strong {
   aspect-ratio: 1;
 }
 
-.done-photo-empty {
-  position: absolute;
-  inset: 8px;
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 3px;
-}
-
+/* 흰 배경 레이어 (실제 이미지 없음) */
+.done-photo-ghost,
 .done-photo-polaroid {
   position: absolute;
+  inset: 8px;
   background: white;
   padding: 3px 3px 9px;
-  box-shadow: 1px 2px 5px rgba(60, 40, 10, 0.28);
+  box-shadow: 1px 2px 5px rgba(60, 40, 10, 0.22);
+}
+
+.ghost-far {
+  transform: rotate(-9deg);
+  z-index: 1;
+}
+
+.ghost-near {
+  transform: rotate(6deg);
+  z-index: 2;
+}
+
+/* 실제 썸네일 — 항상 최상단 */
+.done-photo-polaroid {
+  transform: rotate(-1.5deg);
+  z-index: 3;
 }
 
 .done-photo-polaroid img {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   object-fit: cover;
-}
-
-/* 1장 */
-.done-photo-stack.count-1 .done-photo-polaroid {
-  inset: 6px;
-  transform: rotate(-2deg);
-  z-index: 1;
-}
-
-/* 2장 */
-.done-photo-stack.count-2 .done-photo-polaroid:nth-child(1) {
-  inset: 10px;
-  transform: rotate(-9deg);
-  z-index: 1;
-}
-.done-photo-stack.count-2 .done-photo-polaroid:nth-child(2) {
-  inset: 10px;
-  transform: rotate(6deg);
-  z-index: 2;
-}
-
-/* 3장 */
-.done-photo-stack.count-3 .done-photo-polaroid:nth-child(1) {
-  inset: 10px;
-  transform: rotate(-11deg);
-  z-index: 1;
-}
-.done-photo-stack.count-3 .done-photo-polaroid:nth-child(2) {
-  inset: 10px;
-  transform: rotate(7deg);
-  z-index: 2;
-}
-.done-photo-stack.count-3 .done-photo-polaroid:nth-child(3) {
-  inset: 10px;
-  transform: rotate(-1deg);
-  z-index: 3;
 }
 
 .bucket-done-sentinel {

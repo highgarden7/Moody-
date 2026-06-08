@@ -85,6 +85,12 @@ service cloud.firestore {
         && request.resource.data.deleteVotes.diff(resource.data.deleteVotes).changedKeys().size() == 0;
     }
 
+    function bucketCoverThumbsUpdate() {
+      return resource.data.status == 'done'
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['coverThumbUrls', 'coverThumbUrl']);
+    }
+
     function bucketAllVotedDelete(coupleId) {
       let memberList = coupleData(coupleId).members;
       let votes = resource.data.deleteVotes;
@@ -141,7 +147,7 @@ service cloud.firestore {
           && request.resource.data.deleteVotes.size() == 0;
 
         allow update: if isCoupleMember(coupleId)
-          && (bucketOpenToDone() || bucketTitleEdit() || bucketVoteToggle());
+          && (bucketOpenToDone() || bucketTitleEdit() || bucketVoteToggle() || bucketCoverThumbsUpdate());
 
         allow delete: if isCoupleMember(coupleId)
           && (

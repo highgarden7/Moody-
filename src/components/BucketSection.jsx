@@ -241,7 +241,8 @@ function noteTone(index) {
 }
 
 function DoneCard({ item, index, myUid, partnerUid, onSelect, onVote }) {
-  const thumbs = item.coverThumbUrls || (item.coverThumbUrl ? [item.coverThumbUrl] : []);
+  const photoCount = (item.coverThumbUrls || (item.coverThumbUrl ? [item.coverThumbUrl] : [])).length;
+  const ghostCount = Math.min(photoCount - 1, 2); // 뒤에 겹치는 흰 레이어 수 (최대 2)
   const noteColor = index % 2 === 0 ? 'note-yellow' : 'note-peach';
   const noteTilt = index % 2 === 0 ? 'tilt-left' : 'tilt-right';
 
@@ -252,13 +253,14 @@ function DoneCard({ item, index, myUid, partnerUid, onSelect, onVote }) {
         onClick={onSelect}
         type="button"
       >
-        <div className={`done-photo-stack count-${Math.min(thumbs.length, 3)}`}>
-          {thumbs.slice(0, 3).map((url, i) => (
-            <div className="done-photo-polaroid" key={i}>
-              <img alt="" loading="lazy" src={url} />
-            </div>
-          ))}
-          {thumbs.length === 0 && <div className="done-photo-empty" />}
+        <div className="done-photo-stack">
+          {ghostCount >= 2 && <div className="done-photo-ghost ghost-far" />}
+          {ghostCount >= 1 && <div className="done-photo-ghost ghost-near" />}
+          <div className="done-photo-polaroid">
+            {item.coverThumbUrl
+              ? <img alt="" loading="lazy" src={item.coverThumbUrl} />
+              : null}
+          </div>
         </div>
         <span className="bucket-done-card-title">{item.title}</span>
       </button>
@@ -286,6 +288,7 @@ function BucketDetail({
   const [savingTitle, setSavingTitle] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
     setTitleDraft(item.title);
@@ -375,7 +378,9 @@ function BucketDetail({
           <div className="bucket-photo-grid">
             {photos.map((photo, index) => (
               <figure className="bucket-photo" key={photo.id}>
-                <img alt="" loading="lazy" src={photo.thumbUrl} />
+                <button className="bucket-photo-thumb-btn" onClick={() => setLightboxIndex(index)} type="button">
+                  <img alt="" loading="lazy" src={photo.thumbUrl} />
+                </button>
                 <button
                   className="btn-secondary bucket-download"
                   disabled={downloadingId === photo.id}
@@ -397,6 +402,15 @@ function BucketDetail({
               </figure>
             ))}
           </div>
+        )}
+
+        {lightboxIndex !== null && (
+          <Lightbox
+            photos={photos}
+            index={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+            onChange={setLightboxIndex}
+          />
         )}
       </section>
 
@@ -474,6 +488,50 @@ function DeleteConsent({ item, myUid, partnerUid, onVote, expanded }) {
 
 function consentClass(expanded) {
   return expanded ? 'bucket-consent expanded' : 'bucket-consent';
+}
+
+function Lightbox({ photos, index, onClose, onChange }) {
+  const photo = photos[index];
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft' && index > 0) onChange(index - 1);
+      if (e.key === 'ArrowRight' && index < photos.length - 1) onChange(index + 1);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [index, photos.length, onClose, onChange]);
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+        <button className="lightbox-close" onClick={onClose} type="button">✕</button>
+        <img alt="" className="lightbox-img" src={photo.originalUrl || photo.thumbUrl} />
+        {photos.length > 1 && (
+          <div className="lightbox-nav">
+            <button
+              className="lightbox-nav-btn"
+              disabled={index === 0}
+              onClick={() => onChange(index - 1)}
+              type="button"
+            >
+              ‹
+            </button>
+            <span className="lightbox-counter">{index + 1} / {photos.length}</span>
+            <button
+              className="lightbox-nav-btn"
+              disabled={index === photos.length - 1}
+              onClick={() => onChange(index + 1)}
+              type="button"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function UploadButton({ busy, label, onFiles }) {
