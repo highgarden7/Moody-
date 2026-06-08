@@ -3,6 +3,7 @@ import {
   addBucketItem,
   addBucketPhoto,
   deleteBucketItemFully,
+  deleteBucketPhoto,
   deleteOpenBucketItem,
   setDeleteVote,
   updateBucketTitle,
@@ -211,10 +212,11 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
       ) : (
         <>
           <div className="bucket-done-grid">
-            {doneItems.map((item) => (
+            {doneItems.map((item, index) => (
               <DoneCard
                 key={item.id}
                 item={item}
+                index={index}
                 myUid={myUid}
                 partnerUid={partnerUid}
                 onSelect={() => setSelectedItemId(item.id)}
@@ -238,23 +240,26 @@ function noteTone(index) {
   return index % 2 === 0 ? 'note-yellow tilt-left' : 'note-peach tilt-right';
 }
 
-function DoneCard({ item, myUid, partnerUid, onSelect, onVote }) {
+function DoneCard({ item, index, myUid, partnerUid, onSelect, onVote }) {
   const thumbs = item.coverThumbUrls || (item.coverThumbUrl ? [item.coverThumbUrl] : []);
+  const noteColor = index % 2 === 0 ? 'note-yellow' : 'note-peach';
+  const noteTilt = index % 2 === 0 ? 'tilt-left' : 'tilt-right';
 
   return (
     <article className="bucket-done-card">
-      <button className="bucket-done-card-btn" onClick={onSelect} type="button">
-        {thumbs.length > 0 ? (
-          <div className="photo-stack">
-            {thumbs.slice(0, 3).map((url, i) => (
-              <div className="photo-stack-layer" key={i} style={{ '--layer': i }}>
-                <img alt="" loading="lazy" src={url} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="photo-stack photo-stack-empty" />
-        )}
+      <button
+        className={`bucket-done-card-btn note ${noteColor} ${noteTilt}`}
+        onClick={onSelect}
+        type="button"
+      >
+        <div className={`done-photo-stack count-${Math.min(thumbs.length, 3)}`}>
+          {thumbs.slice(0, 3).map((url, i) => (
+            <div className="done-photo-polaroid" key={i}>
+              <img alt="" loading="lazy" src={url} />
+            </div>
+          ))}
+          {thumbs.length === 0 && <div className="done-photo-empty" />}
+        </div>
         <span className="bucket-done-card-title">{item.title}</span>
       </button>
       <DeleteConsent item={item} myUid={myUid} partnerUid={partnerUid} onVote={onVote} />
@@ -280,6 +285,7 @@ function BucketDetail({
   const [titleDraft, setTitleDraft] = useState(item.title);
   const [savingTitle, setSavingTitle] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [deletingPhotoId, setDeletingPhotoId] = useState(null);
 
   useEffect(() => {
     setTitleDraft(item.title);
@@ -297,6 +303,17 @@ function BucketDetail({
       toast(error.message || '제목 수정에 실패했어.');
     } finally {
       setSavingTitle(false);
+    }
+  }
+
+  async function handleDeletePhoto(photo) {
+    setDeletingPhotoId(photo.id);
+    try {
+      await deleteBucketPhoto(coupleId, item.id, photo, photos);
+    } catch (error) {
+      toast(error.message || '사진 삭제에 실패했어.');
+    } finally {
+      setDeletingPhotoId(null);
     }
   }
 
@@ -367,6 +384,16 @@ function BucketDetail({
                 >
                   {downloadingId === photo.id ? '받는 중...' : '원본 다운로드'}
                 </button>
+                {photos.length > 1 && (
+                  <button
+                    className="btn-danger-soft bucket-download"
+                    disabled={deletingPhotoId === photo.id}
+                    onClick={() => handleDeletePhoto(photo)}
+                    type="button"
+                  >
+                    {deletingPhotoId === photo.id ? '삭제 중...' : '사진 삭제'}
+                  </button>
+                )}
               </figure>
             ))}
           </div>

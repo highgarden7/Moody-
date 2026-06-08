@@ -1,4 +1,5 @@
 import {
+  arrayRemove,
   arrayUnion,
   collection,
   deleteDoc,
@@ -289,6 +290,22 @@ export async function deleteBucketItemFully(coupleId, itemId) {
   }
 
   await deleteDoc(bucketDoc(coupleId, itemId)).catch(() => {});
+}
+
+// 사진 1장 삭제: Storage 파일 제거 후 Firestore 문서 삭제, 부모의 coverThumbUrls 갱신.
+export async function deleteBucketPhoto(coupleId, itemId, photo, allPhotos) {
+  ensureReady();
+  if (photo.originalPath) await deleteObject(ref(storage, photo.originalPath)).catch(() => {});
+  if (photo.thumbPath) await deleteObject(ref(storage, photo.thumbPath)).catch(() => {});
+  await deleteDoc(doc(photosCollection(coupleId, itemId), photo.id));
+
+  const updates = { coverThumbUrls: arrayRemove(photo.thumbUrl) };
+  const itemSnap = await getDoc(bucketDoc(coupleId, itemId));
+  if (itemSnap.exists() && itemSnap.data().coverThumbUrl === photo.thumbUrl) {
+    const nextThumb = allPhotos.find((p) => p.id !== photo.id)?.thumbUrl || null;
+    updates.coverThumbUrl = nextThumb;
+  }
+  await updateDoc(bucketDoc(coupleId, itemId), updates);
 }
 
 // 원본을 Blob으로 받아 다운로드를 트리거한다(cross-origin download 속성 회피).
