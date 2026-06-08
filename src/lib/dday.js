@@ -13,7 +13,7 @@ export function buildDdayItems(anniversary, ddays) {
     items.push({
       id: 'anniversary-start',
       label: '만난 날',
-      subtitle: `${togetherDays}일째`,
+      subtitle: `${formatFullDate(metDate)} · ${togetherDays}일째`,
       counter: `D+${togetherDays - 1}`,
       targetDate: metDate,
     });

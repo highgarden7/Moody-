@@ -108,6 +108,21 @@ export function formatEventDateTime(date, allDay) {
   return `${formatDateKey(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+export function formatEventRange(startDate, endDate, allDay) {
+  if (allDay) {
+    if (formatDateKey(startDate) === formatDateKey(endDate)) {
+      return formatDateKey(startDate);
+    }
+    return `${formatDateKey(startDate)} ~ ${formatDateKey(endDate)}`;
+  }
+
+  const startStr = `${formatDateKey(startDate)} ${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+  const endStr = isSameDay(startDate, endDate)
+    ? `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`
+    : `${formatDateKey(endDate)} ${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+  return `${startStr} ~ ${endStr}`;
+}
+
 export function toDateTimeLocalValue(date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);

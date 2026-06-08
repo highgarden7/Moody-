@@ -5,7 +5,7 @@ import {
   addMonths,
   buildMonthGrid,
   buildWeekDays,
-  formatEventDateTime,
+  formatEventRange,
   formatMonthLabel,
   fromDateTimeLocalValue,
   isSameDay,
@@ -386,7 +386,7 @@ export default function CalendarSection({
                   />
                   <div>
                     <strong>{item.title}</strong>
-                    <p className="muted">{formatEventDateTime(item.startDate, item.allDay)}</p>
+                    <p className="muted">{formatEventRange(item.startDate, item.endDate, item.allDay)}</p>
                   </div>
                 </div>
                 <button className="btn-secondary" onClick={() => openEditForm(item)} type="button">
