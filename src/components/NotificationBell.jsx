@@ -12,7 +12,7 @@ export default function NotificationBell({
 
   function handleClick() {
     if (!supported) {
-      toast(reason || '이 기기에서는 알림을 쓸 수 없어.');
+      toast(reason || '이 기기에서는 알림을 켤 수 없어.');
       return;
     }
 

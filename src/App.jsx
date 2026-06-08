@@ -6,6 +6,7 @@ import DdaySection from './components/DdaySection';
 import PairingScreen from './components/PairingScreen';
 import PwaUpdateModal from './components/PwaUpdateModal';
 import NotificationBell from './components/NotificationBell';
+import PingHeartButton from './components/PingHeartButton';
 import { firebaseConfigReady } from './firebase';
 import {
   clearPendingSignupContext,
@@ -14,6 +15,7 @@ import {
   useAuth
 } from './hooks/useAuth';
 import { findCoupleIdForUser, requestCoupleDeletion, setCoupleDeletionNow, useCoupleData } from './hooks/useCoupleData';
+import { usePingStatus } from './hooks/usePingStatus';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { checkAndApplyAppUpdate, usePwaUpdate } from './pwaUpdate';
 
@@ -137,6 +139,11 @@ export default function App() {
     uid: user?.uid || '',
     toast: setToast
   });
+  const pingStatus = usePingStatus({
+    coupleId,
+    uid: user?.uid || '',
+    toast: setToast
+  });
 
   const updateModal =
     needRefresh && updateSW ? <PwaUpdateModal onUpdate={() => updateSW(true)} /> : null;
@@ -251,6 +258,7 @@ export default function App() {
                   />
                 </svg>
               </button>
+              <PingHeartButton busy={pingStatus.busy} onSend={pingStatus.sendPing} sentToday={pingStatus.sentToday} />
               <NotificationBell
                 busy={pushNotifications.busy}
                 enabled={pushNotifications.enabled}

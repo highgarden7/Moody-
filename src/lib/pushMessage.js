@@ -1,7 +1,7 @@
 export function buildGenericPushMessage(data = {}) {
-  if (typeof data.title === 'string' && typeof data.body === 'string') {
+  if (typeof data.body === 'string' && data.body.trim().length > 0) {
     return {
-      title: data.title,
+      title: typeof data.title === 'string' && data.title.trim().length > 0 ? data.title : 'Moody',
       body: data.body
     };
   }
@@ -9,18 +9,18 @@ export function buildGenericPushMessage(data = {}) {
   switch (data.kind) {
     case 'dday':
       return {
-        title: 'moody',
+        title: 'Moody',
         body: '디데이 알림이 도착했어.'
       };
     case 'mood':
     case 'event':
       return {
-        title: 'moody',
+        title: 'Moody',
         body: '새 기록이 도착했어.'
       };
     default:
       return {
-        title: 'moody',
+        title: 'Moody',
         body: '새 알림이 도착했어.'
       };
   }

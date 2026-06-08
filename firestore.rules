@@ -181,6 +181,16 @@ service cloud.firestore {
         allow read, write: if isCoupleMember(coupleId);
       }
 
+      match /pings/{pingId} {
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly(['fromUid', 'createdAt'])
+          && request.resource.data.fromUid is string
+          && request.resource.data.fromUid == request.auth.uid
+          && request.resource.data.createdAt is timestamp;
+        allow update, delete: if false;
+      }
+
       match /bucket/{itemId} {
         allow read: if isCoupleMember(coupleId);
 

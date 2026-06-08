@@ -2,7 +2,11 @@
 
 const admin = require('firebase-admin');
 const logger = require('firebase-functions/logger');
-const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require('firebase-functions/v2/firestore');
+const {
+  onDocumentCreated,
+  onDocumentUpdated,
+  onDocumentWritten
+} = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 
 admin.initializeApp();
@@ -12,45 +16,50 @@ const messaging = admin.messaging();
 
 const REGION = 'asia-northeast3';
 const DAY_MS = 24 * 60 * 60 * 1000;
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const INVALID_TOKEN_CODES = new Set([
   'messaging/registration-token-not-registered',
   'messaging/invalid-registration-token'
 ]);
 
 const RECORD_MESSAGE = {
-  title: 'Moody',
-  body: '오늘의 기록이 도착했어요 — Moody에서 확인'
+  title: 'moody',
+  body: '오늘의 기록이 도착했어요 — moody에서 확인'
 };
 
 const MOOD_RECORDED_MESSAGE = {
-  title: '오늘의 Moody',
-  body: '상대방이 오늘의 Moody를 기록했어요'
+  title: 'moody',
+  body: '오늘의 Moody가 도착했어요 — moody에서 확인'
 };
 
 const MOOD_REMINDER_1250 = {
-  title: '오늘의 Moody',
-  body: '오늘의 무드Moody를 상대에게 알리세요'
+  title: 'moody',
+  body: '오늘의 무드를 상대에게 알려줘요'
 };
 
 const MOOD_REMINDER_2320 = {
-  title: '오늘의 Moody',
-  body: '오늘의 Moody를 아직 기록하지 않았어요. 오늘이 지나기 전에 남겨보세요'
+  title: 'moody',
+  body: '오늘의 Moody를 아직 기록하지 않았어요. 오늘이 지나기 전에 남겨봐요'
 };
 
 const DELETION_NOTICE_MESSAGE = {
   title: 'moody',
-  body: '상대가 탈퇴했어요. 3일 후 모든 데이터가 영구 삭제됩니다'
+  body: '상대가 탈퇴했어요. 3일 뒤 모든 데이터가 영구 삭제됩니다.'
 };
 
 const DDAY_MESSAGES = {
   7: {
-    title: 'Moody',
-    body: '곧 다가와요 — Moody에서 확인해요'
+    title: 'moody',
+    body: '곧 다가와요 — moody에서 확인해요'
   },
   1: {
-    title: 'Moody',
-    body: '내일이에요! Moody 열어보기'
+    title: 'moody',
+    body: '내일이에요! moody 열어보기'
   }
+};
+
+const PING_MESSAGE = {
+  body: '보고싶대요 💛'
 };
 
 exports.sendDdayNotifications = onSchedule(
@@ -170,6 +179,53 @@ exports.notifyOnEventCreate = onDocumentCreated(
   }
 );
 
+exports.notifyOnPingCreate = onDocumentCreated(
+  {
+    region: REGION,
+    document: 'couples/{coupleId}/pings/{pingId}'
+  },
+  async (event) => {
+    const pingData = event.data.data();
+    const fromUid = pingData.fromUid;
+    const createdAt = pingData.createdAt?.toDate?.();
+
+    if (!fromUid || !createdAt) {
+      await event.data.ref.delete().catch(() => {});
+      return;
+    }
+
+    const { coupleId } = event.params;
+    const { start, end } = getKstDayBoundsFromDate(createdAt);
+    const sameDaySnapshot = await db
+      .collection('couples')
+      .doc(coupleId)
+      .collection('pings')
+      .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(start))
+      .where('createdAt', '<', admin.firestore.Timestamp.fromDate(end))
+      .get();
+
+    const sameAuthorCount = sameDaySnapshot.docs.filter((doc) => doc.data().fromUid === fromUid).length;
+    if (sameAuthorCount > 1) {
+      await event.data.ref.delete().catch(() => {});
+      logger.info('duplicate ping removed', { coupleId, fromUid });
+      return;
+    }
+
+    const coupleRef = db.collection('couples').doc(coupleId);
+    const coupleSnap = await coupleRef.get();
+    if (!coupleSnap.exists) {
+      return;
+    }
+
+    const targetEntries = getPartnerTokenEntries(coupleSnap.data(), [fromUid]);
+    if (targetEntries.length === 0) {
+      return;
+    }
+
+    await sendMessagesToTokenEntries(coupleRef, targetEntries, PING_MESSAGE, 'ping');
+  }
+);
+
 exports.onCoupleUpdateForDeletion = onDocumentUpdated(
   {
     region: REGION,
@@ -184,7 +240,6 @@ exports.onCoupleUpdateForDeletion = onDocumentUpdated(
       return;
     }
 
-    // 'requested' → 일정 예약 + 신청자 Auth 즉시 삭제 + 상대 FCM
     if (after.deletionStatus === 'requested') {
       const requestedByUid = after.deletionRequestedBy;
       const requestedAt = after.deletionRequestedAt?.toDate?.() ?? new Date();
@@ -195,8 +250,8 @@ exports.onCoupleUpdateForDeletion = onDocumentUpdated(
           deletionStatus: 'scheduled',
           deletionScheduledAt: admin.firestore.Timestamp.fromDate(scheduledAt)
         });
-      } catch (err) {
-        logger.error('Failed to set scheduledAt', { coupleId, error: err.message });
+      } catch (error) {
+        logger.error('Failed to set scheduledAt', { coupleId, error: error.message });
       }
 
       const coupleSnap = await db.collection('couples').doc(coupleId).get();
@@ -214,14 +269,16 @@ exports.onCoupleUpdateForDeletion = onDocumentUpdated(
 
       try {
         await admin.auth().deleteUser(requestedByUid);
-      } catch (err) {
-        logger.warn('Requestor auth delete failed', { requestedByUid, code: err.code });
+      } catch (error) {
+        logger.warn('Requestor auth delete failed', {
+          requestedByUid,
+          code: error.code
+        });
       }
 
       return;
     }
 
-    // 'delete_now' → 즉시 전체 삭제
     if (after.deletionStatus === 'delete_now') {
       const members = Array.isArray(after.members) ? after.members : [];
       const requestedBy = after.deletionRequestedBy;
@@ -245,7 +302,6 @@ exports.dailyCleanup = onSchedule(
       const data = coupleDoc.data();
       const coupleId = coupleDoc.id;
 
-      // (A) 탈퇴 만료: scheduledAt <= now
       if (data.deletionStatus === 'scheduled') {
         const scheduledAt = data.deletionScheduledAt?.toDate?.();
         if (scheduledAt && scheduledAt <= now) {
@@ -256,7 +312,6 @@ exports.dailyCleanup = onSchedule(
         continue;
       }
 
-      // (B) 고아 커플: 멤버 1명 + 생성 4일 이상
       if (!data.deletionStatus && Array.isArray(data.members) && data.members.length === 1) {
         const createdAt = data.createdAt?.toDate?.();
         if (createdAt && now.getTime() - createdAt.getTime() >= 4 * DAY_MS) {
@@ -268,56 +323,6 @@ exports.dailyCleanup = onSchedule(
     logger.info('dailyCleanup complete');
   }
 );
-
-async function purgeCouple(coupleId, memberUids) {
-  logger.info('purgeCouple start', { coupleId, memberUids });
-
-  // 1. Storage 파일 삭제
-  try {
-    const bucket = admin.storage().bucket();
-    const [files] = await bucket.getFiles({ prefix: `couples/${coupleId}/` });
-    await Promise.allSettled(files.map((file) => file.delete()));
-    logger.info('Storage purged', { coupleId, count: files.length });
-  } catch (err) {
-    logger.error('Storage purge failed', { coupleId, error: err.message });
-  }
-
-  // 2. pairingCodes 삭제
-  try {
-    const codesSnap = await db.collection('pairingCodes').where('coupleId', '==', coupleId).get();
-    await Promise.allSettled(codesSnap.docs.map((d) => d.ref.delete()));
-  } catch (err) {
-    logger.error('PairingCodes purge failed', { coupleId, error: err.message });
-  }
-
-  // 3. users/{uid} 문서 삭제
-  await Promise.allSettled(
-    memberUids.map((uid) =>
-      db.collection('users').doc(uid).delete().catch((err) => {
-        logger.warn('User doc delete failed', { uid, error: err.message });
-      })
-    )
-  );
-
-  // 4. couples/{coupleId} 재귀 삭제
-  try {
-    await db.recursiveDelete(db.collection('couples').doc(coupleId));
-    logger.info('Couple recursive delete done', { coupleId });
-  } catch (err) {
-    logger.error('Couple recursive delete failed', { coupleId, error: err.message });
-  }
-
-  // 5. Auth 계정 삭제
-  await Promise.allSettled(
-    memberUids.map((uid) =>
-      admin.auth().deleteUser(uid).catch((err) => {
-        logger.warn('Auth delete failed', { uid, code: err.code });
-      })
-    )
-  );
-
-  logger.info('purgeCouple complete', { coupleId });
-}
 
 exports.notifyMoodReminder1250 = onSchedule(
   {
@@ -384,12 +389,10 @@ async function sendMessagesToTokenEntries(coupleRef, tokenEntries, notification,
     return 0;
   }
 
+  const notificationPayload = buildNotificationPayload(notification);
   const messages = tokenEntries.map(({ token }) => ({
     token,
-    notification: {
-      title: notification.title,
-      body: notification.body
-    },
+    notification: notificationPayload,
     data: {
       type: kind,
       link: '/'
@@ -399,8 +402,7 @@ async function sendMessagesToTokenEntries(coupleRef, tokenEntries, notification,
         Urgency: 'high'
       },
       notification: {
-        title: notification.title,
-        body: notification.body,
+        ...notificationPayload,
         icon: '/files/icon-192.png'
       },
       fcmOptions: {
@@ -442,6 +444,51 @@ async function cleanupInvalidTokens(coupleRef, tokenEntries, responses) {
   await coupleRef.update(cleanup);
 }
 
+async function purgeCouple(coupleId, memberUids) {
+  logger.info('purgeCouple start', { coupleId, memberUids });
+
+  try {
+    const bucket = admin.storage().bucket();
+    const [files] = await bucket.getFiles({ prefix: `couples/${coupleId}/` });
+    await Promise.allSettled(files.map((file) => file.delete()));
+    logger.info('Storage purged', { coupleId, count: files.length });
+  } catch (error) {
+    logger.error('Storage purge failed', { coupleId, error: error.message });
+  }
+
+  try {
+    const codesSnapshot = await db.collection('pairingCodes').where('coupleId', '==', coupleId).get();
+    await Promise.allSettled(codesSnapshot.docs.map((doc) => doc.ref.delete()));
+  } catch (error) {
+    logger.error('PairingCodes purge failed', { coupleId, error: error.message });
+  }
+
+  await Promise.allSettled(
+    memberUids.map((uid) =>
+      db.collection('users').doc(uid).delete().catch((error) => {
+        logger.warn('User doc delete failed', { uid, error: error.message });
+      })
+    )
+  );
+
+  try {
+    await db.recursiveDelete(db.collection('couples').doc(coupleId));
+    logger.info('Couple recursive delete done', { coupleId });
+  } catch (error) {
+    logger.error('Couple recursive delete failed', { coupleId, error: error.message });
+  }
+
+  await Promise.allSettled(
+    memberUids.map((uid) =>
+      admin.auth().deleteUser(uid).catch((error) => {
+        logger.warn('Auth delete failed', { uid, code: error.code });
+      })
+    )
+  );
+
+  logger.info('purgeCouple complete', { coupleId });
+}
+
 function getAllTokenEntries(coupleData) {
   const tokens = coupleData.fcmTokens || {};
   return Object.entries(tokens)
@@ -476,6 +523,17 @@ function getPartnerTokenEntries(coupleData, authorUids) {
 
 function getKstDayStart(date = new Date()) {
   return toUtcDayFromKey(getKstDateKey(date));
+}
+
+function getKstDayBoundsFromDate(date) {
+  const shifted = new Date(date.getTime() + KST_OFFSET_MS);
+  const startMs =
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - KST_OFFSET_MS;
+
+  return {
+    start: new Date(startMs),
+    end: new Date(startMs + DAY_MS)
+  };
 }
 
 function toKstDayStart(timestamp) {
@@ -526,4 +584,18 @@ function addDays(date, days) {
 
 function diffDays(targetDate, baseDate) {
   return Math.round((targetDate.getTime() - baseDate.getTime()) / DAY_MS);
+}
+
+function buildNotificationPayload(notification) {
+  const payload = {};
+
+  if (typeof notification.title === 'string' && notification.title.trim().length > 0) {
+    payload.title = notification.title;
+  }
+
+  if (typeof notification.body === 'string' && notification.body.trim().length > 0) {
+    payload.body = notification.body;
+  }
+
+  return payload;
 }
