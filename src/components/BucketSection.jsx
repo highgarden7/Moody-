@@ -6,6 +6,7 @@ import {
   deleteBucketPhoto,
   deleteOpenBucketItem,
   setDeleteVote,
+  updateBucketCompletedDate,
   updateBucketTitle,
   useBucketItems,
   useDoneBucketItems,
@@ -262,7 +263,10 @@ function DoneCard({ item, index, myUid, partnerUid, onSelect, onVote }) {
               : null}
           </div>
         </div>
-        <span className="bucket-done-card-title">{item.title}</span>
+        <span className="bucket-done-card-title">
+          {item.completedDate && <span className="done-card-date">{item.completedDate}</span>}
+          {item.title}
+        </span>
       </button>
       <DeleteConsent item={item} myUid={myUid} partnerUid={partnerUid} onVote={onVote} />
     </article>
@@ -289,6 +293,7 @@ function BucketDetail({
   const [downloadingId, setDownloadingId] = useState(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [savingDate, setSavingDate] = useState(false);
 
   useEffect(() => {
     setTitleDraft(item.title);
@@ -306,6 +311,19 @@ function BucketDetail({
       toast(error.message || '제목 수정에 실패했어.');
     } finally {
       setSavingTitle(false);
+    }
+  }
+
+  async function handleDateChange(e) {
+    const raw = e.target.value; // "yyyy-mm-dd" or ""
+    const formatted = raw ? raw.replace(/-/g, '.') : '';
+    setSavingDate(true);
+    try {
+      await updateBucketCompletedDate(coupleId, item.id, formatted);
+    } catch (error) {
+      toast(error.message || '날짜 저장에 실패했어.');
+    } finally {
+      setSavingDate(false);
     }
   }
 
@@ -343,7 +361,21 @@ function BucketDetail({
         </div>
 
         {isDone ? (
-          <h2 className="bucket-detail-title">{item.title}</h2>
+          <>
+            <h2 className="bucket-detail-title">{item.title}</h2>
+            <div className="bucket-date-row">
+              <label className="bucket-date-label">완료날짜</label>
+              <input
+                className="bucket-date-input"
+                disabled={savingDate}
+                max="2099-12-31"
+                min="2000-01-01"
+                onChange={handleDateChange}
+                type="date"
+                value={item.completedDate ? item.completedDate.replace(/\./g, '-') : ''}
+              />
+            </div>
+          </>
         ) : (
           <div className="bucket-title-edit">
             <input

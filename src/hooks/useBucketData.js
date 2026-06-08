@@ -88,7 +88,7 @@ export function useBucketPhotos(coupleId, itemId) {
     }
 
     setLoading(true);
-    const unsubscribe = onSnapshot(query(photosCollection(coupleId, itemId)), (snapshot) => {
+    const unsubscribe = onSnapshot(query(photosCollection(coupleId, itemId), orderBy('uploadedAt', 'asc')), (snapshot) => {
       setPhotos(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
       setLoading(false);
     });
@@ -185,6 +185,13 @@ export async function updateBucketTitle(coupleId, itemId, title) {
     throw new Error('내용을 입력해줘.');
   }
   await updateDoc(bucketDoc(coupleId, itemId), { title: trimmed });
+}
+
+export async function updateBucketCompletedDate(coupleId, itemId, dateStr) {
+  ensureReady();
+  await updateDoc(bucketDoc(coupleId, itemId), {
+    completedDate: dateStr || deleteField()
+  });
 }
 
 function extensionFor(file) {
