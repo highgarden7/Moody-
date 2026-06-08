@@ -91,6 +91,15 @@ service cloud.firestore {
             .hasOnly(['coverThumbUrls', 'coverThumbUrl', 'completedDate']);
     }
 
+    function isKstToday(dateId) {
+      let kst = request.time + duration.value(9, 'h');
+      let rawM = kst.month();
+      let rawD = kst.day();
+      let m = rawM < 10 ? ('0' + string(rawM)) : string(rawM);
+      let d = rawD < 10 ? ('0' + string(rawD)) : string(rawD);
+      return dateId == string(kst.year()) + '-' + m + '-' + d;
+    }
+
     function bucketAllVotedDelete(coupleId) {
       let memberList = coupleData(coupleId).members;
       let votes = resource.data.deleteVotes;
@@ -131,11 +140,13 @@ service cloud.firestore {
       match /moods/{moodId} {
         allow read: if isCoupleMember(coupleId);
         allow create: if isCoupleMember(coupleId)
+          && isKstToday(moodId)
           && request.resource.data.keys().hasOnly([request.auth.uid])
           && request.resource.data[request.auth.uid] is map
           && request.resource.data[request.auth.uid].condition in
              ['spark', 'warm', 'miss', 'good', 'pat', 'drained', 'alone', 'down'];
         allow update: if isCoupleMember(coupleId)
+          && isKstToday(moodId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([request.auth.uid])
           && request.resource.data[request.auth.uid] is map
           && request.resource.data[request.auth.uid].condition in

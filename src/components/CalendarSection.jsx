@@ -54,6 +54,7 @@ export default function CalendarSection({
   const selectedDateKey = toDateInputValue(selectedDate);
   const selectedDayMoods = moods[selectedDateKey] || {};
   const myMood = selectedDayMoods[myUid];
+  const isSelectedToday = selectedDateKey === toDateInputValue(new Date());
 
   const monthlySummary = useMemo(() => {
     if (!partnerUid) return null;
@@ -386,14 +387,16 @@ export default function CalendarSection({
             <button className="btn-secondary" onClick={() => setShowMoodForm(false)} type="button">
               닫기
             </button>
-          ) : (
+          ) : isSelectedToday ? (
             <button className="btn-secondary" onClick={openMoodForm} type="button">
               {myMood ? '무드 수정' : '무드 남기기'}
             </button>
-          )}
+          ) : null}
         </div>
 
-        {showMoodForm ? (
+        {!isSelectedToday ? (
+          <p className="muted">지난 날의 무드는 기록할 수 없어요</p>
+        ) : showMoodForm ? (
           <>
             <div className="condition-grid">
               {CONDITIONS.map((cond) => {
