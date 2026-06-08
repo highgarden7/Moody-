@@ -61,25 +61,91 @@ function commentsCollection(coupleId, itemId) {
 
 export function useBucketItems(coupleId, refreshToken = 0) {
   const [items, setItems] = useState([]);
+  const [lastDocRef, setLastDocRef] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     if (!coupleId || !db) {
       setItems([]);
+      setLastDocRef(null);
+      setHasMore(false);
       setLoading(false);
-      return undefined;
+      loadingRef.current = false;
+      return;
     }
 
-    setLoading(true);
-    const unsubscribe = onSnapshot(query(bucketCollection(coupleId), where('status', '==', 'open')), (snapshot) => {
-      setItems(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-      setLoading(false);
-    });
+    async function loadInitial() {
+      setItems([]);
+      setLastDocRef(null);
+      setHasMore(true);
+      setLoading(true);
+      loadingRef.current = true;
 
-    return unsubscribe;
+      try {
+        const openQuery = query(
+          bucketCollection(coupleId),
+          where('status', '==', 'open'),
+          orderBy('createdAt', 'asc'),
+          limit(7)
+        );
+        const snapshot = await getDocs(openQuery);
+        setItems(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+        setLastDocRef(snapshot.docs[snapshot.docs.length - 1] || null);
+        setHasMore(snapshot.docs.length === 7);
+      } finally {
+        setLoading(false);
+        loadingRef.current = false;
+      }
+    }
+
+    loadInitial();
   }, [coupleId, refreshToken]);
 
-  return { items, loading };
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || !hasMore || !coupleId || !db || !lastDocRef) {
+      return;
+    }
+
+    loadingRef.current = true;
+    setLoading(true);
+
+    try {
+      const openQuery = query(
+        bucketCollection(coupleId),
+        where('status', '==', 'open'),
+        orderBy('createdAt', 'asc'),
+        startAfter(lastDocRef),
+        limit(3)
+      );
+      const snapshot = await getDocs(openQuery);
+      setItems((current) => [
+        ...current,
+        ...snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+      ]);
+      setLastDocRef(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === 3);
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  }, [coupleId, hasMore, lastDocRef]);
+
+  const appendItem = useCallback((item) => {
+    setItems((current) => {
+      if (current.some((entry) => entry.id === item.id)) {
+        return current;
+      }
+      return [...current, item];
+    });
+  }, []);
+
+  const removeItem = useCallback((itemId) => {
+    setItems((current) => current.filter((item) => item.id !== itemId));
+  }, []);
+
+  return { items, hasMore, loading, loadMore, appendItem, removeItem };
 }
 
 export function useBucketPhotos(coupleId, itemId) {
@@ -211,7 +277,14 @@ export async function addBucketItem(coupleId, uid, title) {
     status: 'open',
     deleteVotes: {}
   });
-  return itemRef.id;
+  return {
+    id: itemRef.id,
+    title: trimmed,
+    createdBy: uid,
+    createdAt: new Date(),
+    status: 'open',
+    deleteVotes: {}
+  };
 }
 
 export async function updateBucketTitle(coupleId, itemId, title) {

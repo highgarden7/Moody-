@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   addBucketComment,
   addBucketItem,
@@ -23,7 +23,14 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
   const memberUids = Array.isArray(members) ? members : [];
   const partnerUid = memberUids.find((uid) => uid !== myUid) || null;
 
-  const { items: openItems } = useBucketItems(coupleId, refreshToken);
+  const {
+    items: openItems,
+    hasMore: openHasMore,
+    loading: openLoading,
+    loadMore: loadMoreOpen,
+    appendItem: appendOpenItem,
+    removeItem: removeOpenItem
+  } = useBucketItems(coupleId, refreshToken);
   const [listTab, setListTab] = useState('open');
   const [doneEnabled, setDoneEnabled] = useState(false);
   const { items: doneItems, hasMore: doneHasMore, loading: doneLoading, loadMore: loadMoreDone, reload: reloadDone } = useDoneBucketItems(coupleId, doneEnabled);
@@ -32,9 +39,10 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
   const processedRef = useRef(new Set());
+  const openSentinelRef = useRef(null);
   const sentinelRef = useRef(null);
 
-  // selectedItem: open 목록에서 먼저 찾고, 없으면 done 목록에서 찾음
+  // selectedItem: open 紐⑸줉?먯꽌 癒쇱? 李얘퀬, ?놁쑝硫?done 紐⑸줉?먯꽌 李얠쓬
   const selectedItem = useMemo(
     () => openItems.find((i) => i.id === selectedItemId)
       || doneItems.find((i) => i.id === selectedItemId)
@@ -48,6 +56,18 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
   }
 
   useEffect(() => {
+    if (!openSentinelRef.current || listTab !== 'open') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMoreOpen();
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(openSentinelRef.current);
+    return () => observer.disconnect();
+  }, [listTab, loadMoreOpen]);
+
+  useEffect(() => {
     if (!sentinelRef.current) return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -59,7 +79,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
     return () => observer.disconnect();
   }, [loadMoreDone]);
 
-  // 두 멤버가 모두 삭제에 동의한 done 항목은 실제 삭제를 실행한다.
+  // ??硫ㅻ쾭媛 紐⑤몢 ??젣???숈쓽??done ??ぉ? ?ㅼ젣 ??젣瑜??ㅽ뻾?쒕떎.
   useEffect(() => {
     if (memberUids.length < 2) {
       return;
@@ -81,11 +101,12 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
     event.preventDefault();
     setAdding(true);
     try {
-      await addBucketItem(coupleId, myUid, newTitle);
+      const nextItem = await addBucketItem(coupleId, myUid, newTitle);
+      appendOpenItem(nextItem);
       setNewTitle('');
-      toast('버킷리스트에 추가했어.');
+      toast('踰꾪궥由ъ뒪?몄뿉 異붽??덉뼱.');
     } catch (error) {
-      toast(error.message || '추가에 실패했어.');
+      toast(error.message || '異붽????ㅽ뙣?덉뼱.');
     } finally {
       setAdding(false);
     }
@@ -100,15 +121,16 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
       for (const file of files) {
         await addBucketPhoto(coupleId, itemId, myUid, file);
       }
-      toast('사진을 추가했어.');
+      toast('?ъ쭊??異붽??덉뼱.');
       if (wasOpen) {
-        // open→done 전환: 완성탭으로 이동하고 목록 갱신
+        // open?뭗one ?꾪솚: ?꾩꽦??쑝濡??대룞?섍퀬 紐⑸줉 媛깆떊
+        removeOpenItem(itemId);
         setSelectedItemId(null);
         openDoneTab();
         reloadDone();
       }
     } catch (error) {
-      toast(error.message || '사진 업로드에 실패했어.');
+      toast(error.message || '?ъ쭊 ?낅줈?쒖뿉 ?ㅽ뙣?덉뼱.');
     } finally {
       setUploadingId(null);
     }
@@ -117,12 +139,13 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
   async function handleDeleteOpen(itemId) {
     try {
       await deleteOpenBucketItem(coupleId, itemId);
+      removeOpenItem(itemId);
       if (selectedItemId === itemId) {
         setSelectedItemId(null);
       }
-      toast('항목을 삭제했어.');
+      toast('??ぉ????젣?덉뼱.');
     } catch (error) {
-      toast(error.message || '삭제에 실패했어.');
+      toast(error.message || '??젣???ㅽ뙣?덉뼱.');
     }
   }
 
@@ -130,7 +153,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
     try {
       await setDeleteVote(coupleId, itemId, uid, agree);
     } catch (error) {
-      toast(error.message || '처리에 실패했어.');
+      toast(error.message || '泥섎━???ㅽ뙣?덉뼱.');
     }
   }
 
@@ -146,7 +169,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
         onFiles={handleFiles}
         onDeleteOpen={handleDeleteOpen}
         onVote={handleVote}
-        onRenamed={() => toast('제목을 수정했어.')}
+        onRenamed={() => toast('?쒕ぉ???섏젙?덉뼱.')}
         toast={toast}
       />
     );
@@ -159,11 +182,11 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
           <form className="bucket-add" onSubmit={handleAdd}>
             <input
               onChange={(event) => setNewTitle(event.target.value)}
-              placeholder="같이 하고 싶은 거 적어줘"
+              placeholder="같이 하고 싶은 걸 적어줘"
               value={newTitle}
             />
             <button className="btn-primary" disabled={adding} type="submit">
-              추가
+              異붽?
             </button>
           </form>
         </section>
@@ -175,23 +198,24 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
           onClick={() => setListTab('open')}
           type="button"
         >
-          진행 중
+          吏꾪뻾 以?
         </button>
         <button
           className={listTab === 'done' ? 'active' : ''}
           onClick={openDoneTab}
           type="button"
         >
-          완성
+          ?꾩꽦
         </button>
       </div>
 
       {listTab === 'open' ? (
         openItems.length === 0 ? (
           <section className="panel paper-card">
-            <p className="muted">아직 진행 중인 버킷이 없어.</p>
+            <p className="muted">?꾩쭅 吏꾪뻾 以묒씤 踰꾪궥???놁뼱.</p>
           </section>
         ) : (
+          <>
           <div className="note-stack">
             {openItems.map((item, index) => (
               <article className={`note bucket-note ${noteTone(index)}`} key={item.id}>
@@ -205,7 +229,7 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
                 <div className="bucket-card-actions">
                   <UploadButton
                     busy={uploadingId === item.id}
-                    label="사진으로 완성하기"
+                    label="?ъ쭊?쇰줈 ?꾩꽦?섍린"
                     onFiles={(files) => handleFiles(item.id, files)}
                   />
                   {item.createdBy === myUid ? (
@@ -214,17 +238,24 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
                       onClick={() => handleDeleteOpen(item.id)}
                       type="button"
                     >
-                      삭제
+                      ??젣
                     </button>
                   ) : null}
                 </div>
               </article>
             ))}
           </div>
+          <div ref={openSentinelRef} className="bucket-done-sentinel">
+            {openLoading && <p className="muted" style={{ textAlign: 'center', padding: '12px 0' }}>?븍뜄???삳뮉 餓?..</p>}
+            {!openHasMore && openItems.length > 0 && (
+              <p className="muted" style={{ textAlign: 'center', padding: '12px 0', fontSize: '13px' }}>筌뤴뫀紐??븍뜄??遺용선 모두 불러왔어 ✓</p>
+            )}
+          </div>
+          </>
         )
       ) : doneItems.length === 0 ? (
         <section className="panel paper-card">
-          <p className="muted">완성한 버킷이 아직 없어.</p>
+          <p className="muted">?꾩꽦??踰꾪궥???꾩쭅 ?놁뼱.</p>
         </section>
       ) : (
         <>
@@ -242,9 +273,9 @@ export default function BucketSection({ coupleId, currentUser, members, refreshT
             ))}
           </div>
           <div ref={sentinelRef} className="bucket-done-sentinel">
-            {doneLoading && <p className="muted" style={{ textAlign: 'center', padding: '12px 0' }}>불러오는 중...</p>}
+            {doneLoading && <p className="muted" style={{ textAlign: 'center', padding: '12px 0' }}>遺덈윭?ㅻ뒗 以?..</p>}
             {!doneHasMore && doneItems.length > 0 && (
-              <p className="muted" style={{ textAlign: 'center', padding: '12px 0', fontSize: '13px' }}>모두 불러왔어 ✓</p>
+              <p className="muted" style={{ textAlign: 'center', padding: '12px 0', fontSize: '13px' }}>紐⑤몢 遺덈윭?붿뼱 모두 불러왔어 ✓</p>
             )}
           </div>
         </>
@@ -259,7 +290,7 @@ function noteTone(index) {
 
 function DoneCard({ item, index, myUid, partnerUid, onSelect, onVote }) {
   const photoCount = (item.coverThumbUrls || (item.coverThumbUrl ? [item.coverThumbUrl] : [])).length;
-  const ghostCount = Math.min(photoCount - 1, 2); // 뒤에 겹치는 흰 레이어 수 (최대 2)
+  const ghostCount = Math.min(photoCount - 1, 2); // ?ㅼ뿉 寃뱀튂?????덉씠????(理쒕? 2)
   const noteColor = index % 2 === 0 ? 'note-yellow' : 'note-peach';
   const noteTilt = index % 2 === 0 ? 'tilt-left' : 'tilt-right';
 
@@ -326,7 +357,7 @@ function BucketDetail({
       await updateBucketTitle(coupleId, item.id, titleDraft);
       onRenamed();
     } catch (error) {
-      toast(error.message || '제목 수정에 실패했어.');
+      toast(error.message || '?쒕ぉ ?섏젙???ㅽ뙣?덉뼱.');
     } finally {
       setSavingTitle(false);
     }
@@ -339,7 +370,7 @@ function BucketDetail({
     try {
       await updateBucketCompletedDate(coupleId, item.id, formatted);
     } catch (error) {
-      toast(error.message || '날짜 저장에 실패했어.');
+      toast(error.message || '?좎쭨 ??μ뿉 ?ㅽ뙣?덉뼱.');
     } finally {
       setSavingDate(false);
     }
@@ -350,7 +381,7 @@ function BucketDetail({
     try {
       await deleteBucketPhoto(coupleId, item.id, photo, photos);
     } catch (error) {
-      toast(error.message || '사진 삭제에 실패했어.');
+      toast(error.message || '?ъ쭊 ??젣???ㅽ뙣?덉뼱.');
     } finally {
       setDeletingPhotoId(null);
     }
@@ -362,7 +393,7 @@ function BucketDetail({
       const ext = photo.originalPath?.split('.').pop() || 'jpg';
       await downloadOriginal(photo.originalPath, `${item.title}-${index + 1}.${ext}`);
     } catch (error) {
-      toast(error.message || '다운로드에 실패했어.');
+      toast(error.message || '?ㅼ슫濡쒕뱶???ㅽ뙣?덉뼱.');
     } finally {
       setDownloadingId(null);
     }
@@ -373,16 +404,16 @@ function BucketDetail({
       <section className="panel paper-card">
         <div className="summary-row summary-row-spread">
           <button className="btn-ghost" onClick={onBack} type="button">
-            ← 목록
+            ??紐⑸줉
           </button>
-          {isDone ? <span className="bucket-badge">완성</span> : null}
+          {isDone ? <span className="bucket-badge">?꾩꽦</span> : null}
         </div>
 
         {isDone ? (
           <>
             <h2 className="bucket-detail-title">{item.title}</h2>
             <div className="bucket-date-row">
-              <span className="bucket-date-label">완료날짜</span>
+              <span className="bucket-date-label">?꾨즺?좎쭨</span>
               <input
                 className="bucket-date-input"
                 disabled={savingDate}
@@ -406,7 +437,7 @@ function BucketDetail({
               onClick={handleSaveTitle}
               type="button"
             >
-              제목 저장
+              ?쒕ぉ ???
             </button>
           </div>
         )}
@@ -414,13 +445,13 @@ function BucketDetail({
 
       <section className="panel paper-card">
         <div className="summary-row summary-row-spread">
-          <h3>사진</h3>
+          <h3>?ъ쭊</h3>
           {photosFull ? (
-            <span className="muted" style={{ fontSize: '13px' }}>최대 {photoLimit}장</span>
+            <span className="muted" style={{ fontSize: '13px' }}>理쒕? {photoLimit}장</span>
           ) : (
             <UploadButton
               busy={uploading}
-              label={isDone ? '사진 추가' : '사진으로 완성하기'}
+              label={isDone ? '?ъ쭊 異붽?' : '?ъ쭊?쇰줈 ?꾩꽦?섍린'}
               onFiles={(files) => {
                 if (isDone) {
                   const limited = Array.from(files).slice(0, photoLimit - photos.length);
@@ -434,7 +465,7 @@ function BucketDetail({
         </div>
 
         {photos.length === 0 ? (
-          <p className="muted">아직 사진이 없어.</p>
+          <p className="muted">?꾩쭅 ?ъ쭊???놁뼱.</p>
         ) : (
           <div className="bucket-photo-grid">
             {photos.map((photo, index) => (
@@ -448,7 +479,7 @@ function BucketDetail({
                   onClick={() => handleDownload(photo, index)}
                   type="button"
                 >
-                  {downloadingId === photo.id ? '받는 중...' : '원본 다운로드'}
+                  {downloadingId === photo.id ? '諛쏅뒗 以?..' : '?먮낯 ?ㅼ슫濡쒕뱶'}
                 </button>
                 {photos.length > 1 && (
                   <button
@@ -457,7 +488,7 @@ function BucketDetail({
                     onClick={() => handleDeletePhoto(photo)}
                     type="button"
                   >
-                    {deletingPhotoId === photo.id ? '삭제 중...' : '사진 삭제'}
+                    {deletingPhotoId === photo.id ? '??젣 以?..' : '?ъ쭊 ??젣'}
                   </button>
                 )}
               </figure>
@@ -488,10 +519,10 @@ function BucketDetail({
             onClick={() => onDeleteOpen(item.id)}
             type="button"
           >
-            이 항목 삭제
+            ????ぉ ??젣
           </button>
         ) : (
-          <p className="muted">사진 없는 항목은 만든 사람만 삭제할 수 있어.</p>
+          <p className="muted">?ъ쭊 ?녿뒗 ??ぉ? 留뚮뱺 ?щ엺留???젣?????덉뼱.</p>
         )}
       </section>
     </section>
@@ -506,9 +537,9 @@ function DeleteConsent({ item, myUid, partnerUid, onVote, expanded }) {
   if (myVote && !partnerVote) {
     return (
       <div className={consentClass(expanded)}>
-        <span className="muted">상대 동의 대기 중</span>
+        <span className="muted">?곷? ?숈쓽 대기 중</span>
         <button className="btn-secondary" onClick={() => onVote(item.id, myUid, false)} type="button">
-          동의 취소
+          ?숈쓽 痍⑥냼
         </button>
       </div>
     );
@@ -517,17 +548,17 @@ function DeleteConsent({ item, myUid, partnerUid, onVote, expanded }) {
   if (!myVote && partnerVote) {
     return (
       <div className={consentClass(expanded)}>
-        <span className="muted">상대가 삭제를 원해요</span>
+        <span className="muted">?곷?媛 ??젣瑜??먰빐장</span>
         <div className="row-actions">
           <button className="btn-danger-soft" onClick={() => onVote(item.id, myUid, true)} type="button">
-            동의
+            ?숈쓽
           </button>
           <button
             className="btn-secondary"
             onClick={() => onVote(item.id, partnerUid, false)}
             type="button"
           >
-            거절
+            嫄곗젅
           </button>
         </div>
       </div>
@@ -537,7 +568,7 @@ function DeleteConsent({ item, myUid, partnerUid, onVote, expanded }) {
   if (myVote && partnerVote) {
     return (
       <div className={consentClass(expanded)}>
-        <span className="muted">삭제하는 중...</span>
+        <span className="muted">??젣?섎뒗 以?..</span>
       </div>
     );
   }
@@ -545,7 +576,7 @@ function DeleteConsent({ item, myUid, partnerUid, onVote, expanded }) {
   return (
     <div className={consentClass(expanded)}>
       <button className="btn-danger-soft" onClick={() => onVote(item.id, myUid, true)} type="button">
-        삭제
+        ??젣
       </button>
     </div>
   );
@@ -581,7 +612,7 @@ function Lightbox({ photos, index, onClose, onChange }) {
               onClick={() => onChange(index - 1)}
               type="button"
             >
-              ‹
+              ??
             </button>
             <span className="lightbox-counter">{index + 1} / {photos.length}</span>
             <button
@@ -590,7 +621,7 @@ function Lightbox({ photos, index, onClose, onChange }) {
               onClick={() => onChange(index + 1)}
               type="button"
             >
-              ›
+              ??
             </button>
           </div>
         )}
@@ -602,7 +633,7 @@ function Lightbox({ photos, index, onClose, onChange }) {
 function UploadButton({ busy, label, onFiles }) {
   return (
     <label className={`btn-secondary bucket-upload${busy ? ' is-busy' : ''}`}>
-      {busy ? '올리는 중...' : label}
+      {busy ? '?щ━??以?..' : label}
       <input
         accept="image/*"
         disabled={busy}
@@ -639,7 +670,7 @@ function CommentsSection({ coupleId, itemId, myUid, toast }) {
       await addBucketComment(coupleId, itemId, myUid, newText);
       setNewText('');
     } catch (err) {
-      toast(err.message || '댓글 작성에 실패했어.');
+      toast(err.message || '?볤? ?묒꽦???ㅽ뙣?덉뼱.');
     } finally {
       setPosting(false);
     }
@@ -647,10 +678,10 @@ function CommentsSection({ coupleId, itemId, myUid, toast }) {
 
   return (
     <section className="panel paper-card">
-      <h3>댓글</h3>
+      <h3>?볤?</h3>
 
       {threads.length === 0 && (
-        <p className="muted">아직 댓글이 없어.</p>
+        <p className="muted">?꾩쭅 ?볤????놁뼱.</p>
       )}
 
       <div className="comment-list">
@@ -684,11 +715,11 @@ function CommentsSection({ coupleId, itemId, myUid, toast }) {
       <form className="comment-form" onSubmit={handlePost}>
         <input
           onChange={(e) => setNewText(e.target.value)}
-          placeholder="댓글을 남겨봐..."
+          placeholder="?볤????④꺼遊?.."
           value={newText}
         />
         <button className="btn-primary comment-submit" disabled={posting || !newText.trim()} type="submit">
-          작성
+          ?묒꽦
         </button>
       </form>
     </section>
@@ -720,7 +751,7 @@ function CommentNote({ comment, index, myUid, coupleId, itemId, isReply, toast }
       await editBucketComment(coupleId, itemId, comment.id, draft);
       setEditing(false);
     } catch (err) {
-      toast(err.message || '수정에 실패했어.');
+      toast(err.message || '?섏젙???ㅽ뙣?덉뼱.');
     } finally {
       setSaving(false);
     }
@@ -730,7 +761,7 @@ function CommentNote({ comment, index, myUid, coupleId, itemId, isReply, toast }
     try {
       await deleteBucketComment(coupleId, itemId, comment.id);
     } catch (err) {
-      toast(err.message || '삭제에 실패했어.');
+      toast(err.message || '??젣???ㅽ뙣?덉뼱.');
     }
   }
 
@@ -743,7 +774,7 @@ function CommentNote({ comment, index, myUid, coupleId, itemId, isReply, toast }
       setReplyText('');
       setReplying(false);
     } catch (err) {
-      toast(err.message || '대댓글 작성에 실패했어.');
+      toast(err.message || '??볤? ?묒꽦???ㅽ뙣?덉뼱.');
     } finally {
       setPostingReply(false);
     }
@@ -760,14 +791,14 @@ function CommentNote({ comment, index, myUid, coupleId, itemId, isReply, toast }
               value={draft}
             />
             <button className="btn-primary comment-submit" disabled={saving} onClick={handleSave} type="button">
-              저장
+              ???
             </button>
             <button
               className="btn-ghost"
               onClick={() => { setEditing(false); setDraft(comment.text); }}
               type="button"
             >
-              취소
+              痍⑥냼
             </button>
           </div>
         ) : (
@@ -775,22 +806,22 @@ function CommentNote({ comment, index, myUid, coupleId, itemId, isReply, toast }
         )}
 
         {comment.updatedAt && !editing && (
-          <span className="comment-meta">(수정됨)</span>
+          <span className="comment-meta">(?섏젙??</span>
         )}
 
         <div className="comment-actions">
           {!isReply && (
             <button className="comment-action-btn" onClick={() => setReplying(!replying)} type="button">
-              답글
+              ?듦?
             </button>
           )}
           {isOwn && !editing && (
             <>
               <button className="comment-action-btn" onClick={() => setEditing(true)} type="button">
-                수정
+                ?섏젙
               </button>
               <button className="comment-action-btn danger" onClick={handleDelete} type="button">
-                삭제
+                ??젣
               </button>
             </>
           )}
@@ -802,17 +833,20 @@ function CommentNote({ comment, index, myUid, coupleId, itemId, isReply, toast }
           <input
             autoFocus
             onChange={(e) => setReplyText(e.target.value)}
-            placeholder="답글을 입력해줘..."
+            placeholder="?듦????낅젰?댁쨾..."
             value={replyText}
           />
           <button className="btn-primary comment-submit" disabled={postingReply || !replyText.trim()} type="submit">
-            작성
+            ?묒꽦
           </button>
           <button className="btn-ghost" onClick={() => setReplying(false)} type="button">
-            취소
+            痍⑥냼
           </button>
         </form>
       )}
     </div>
   );
 }
+
+
+
