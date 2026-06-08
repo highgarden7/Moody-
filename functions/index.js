@@ -18,18 +18,33 @@ const INVALID_TOKEN_CODES = new Set([
 ]);
 
 const RECORD_MESSAGE = {
-  title: 'moody',
-  body: '오늘의 기록이 도착했어요 — moody에서 확인'
+  title: 'Moody',
+  body: '오늘의 기록이 도착했어요 — Moody에서 확인'
+};
+
+const MOOD_RECORDED_MESSAGE = {
+  title: '오늘의 Moody',
+  body: '상대방이 오늘의 Moody를 기록했어요'
+};
+
+const MOOD_REMINDER_1250 = {
+  title: '오늘의 Moody',
+  body: '오늘의 무드Moody를 상대에게 알리세요'
+};
+
+const MOOD_REMINDER_2320 = {
+  title: '오늘의 Moody',
+  body: '오늘의 Moody를 아직 기록하지 않았어요. 오늘이 지나기 전에 남겨보세요'
 };
 
 const DDAY_MESSAGES = {
   7: {
-    title: 'moody',
-    body: '곧 다가와요 — moody에서 확인해요'
+    title: 'Moody',
+    body: '곧 다가와요 — Moody에서 확인해요'
   },
   1: {
-    title: 'moody',
-    body: '내일이에요! moody 열어보기'
+    title: 'Moody',
+    body: '내일이에요! Moody 열어보기'
   }
 };
 
@@ -108,22 +123,18 @@ exports.notifyOnMoodWrite = onDocumentWritten(
       return;
     }
 
-    const changedAuthors = members.filter((uid) => {
-      const beforeValue = beforeData[uid] ?? null;
-      const afterValue = afterData[uid] ?? null;
-      return afterValue && JSON.stringify(beforeValue) !== JSON.stringify(afterValue);
-    });
+    const newAuthors = members.filter((uid) => !beforeData[uid] && !!afterData[uid]);
 
-    if (changedAuthors.length === 0) {
+    if (newAuthors.length === 0) {
       return;
     }
 
-    const targetEntries = getPartnerTokenEntries(coupleData, changedAuthors);
+    const targetEntries = getPartnerTokenEntries(coupleData, newAuthors);
     if (targetEntries.length === 0) {
       return;
     }
 
-    await sendMessagesToTokenEntries(coupleSnap.ref, targetEntries, RECORD_MESSAGE, 'mood');
+    await sendMessagesToTokenEntries(coupleSnap.ref, targetEntries, MOOD_RECORDED_MESSAGE, 'mood');
   }
 );
 
@@ -153,6 +164,66 @@ exports.notifyOnEventCreate = onDocumentCreated(
     await sendMessagesToTokenEntries(coupleRef, targetEntries, RECORD_MESSAGE, 'event');
   }
 );
+
+exports.notifyMoodReminder1250 = onSchedule(
+  {
+    region: REGION,
+    schedule: '50 12 * * *',
+    timeZone: 'Asia/Seoul'
+  },
+  async () => {
+    const sentCount = await sendMoodReminders(MOOD_REMINDER_1250);
+    logger.info('notifyMoodReminder1250 complete', { sentCount });
+  }
+);
+
+exports.notifyMoodReminder2320 = onSchedule(
+  {
+    region: REGION,
+    schedule: '20 23 * * *',
+    timeZone: 'Asia/Seoul'
+  },
+  async () => {
+    const sentCount = await sendMoodReminders(MOOD_REMINDER_2320);
+    logger.info('notifyMoodReminder2320 complete', { sentCount });
+  }
+);
+
+async function sendMoodReminders(notification) {
+  const couplesSnapshot = await db.collection('couples').get();
+  const todayKey = getKstDateKey(new Date());
+  let sentCount = 0;
+
+  for (const coupleDoc of couplesSnapshot.docs) {
+    const coupleData = coupleDoc.data();
+    const members = Array.isArray(coupleData.members) ? coupleData.members : [];
+    if (members.length === 0) {
+      continue;
+    }
+
+    const moodSnap = await coupleDoc.ref.collection('moods').doc(todayKey).get();
+    const moodData = moodSnap.exists ? moodSnap.data() : {};
+
+    const tokens = coupleData.fcmTokens || {};
+    const unrecordedEntries = members
+      .filter((uid) => !moodData[uid])
+      .map((uid) => ({ uid, token: tokens[uid] }))
+      .filter(({ token }) => typeof token === 'string' && token.trim().length > 0);
+
+    if (unrecordedEntries.length === 0) {
+      continue;
+    }
+
+    sentCount += await sendMessagesToTokenEntries(
+      coupleDoc.ref,
+      unrecordedEntries,
+      notification,
+      'mood-reminder'
+    );
+  }
+
+  return sentCount;
+}
 
 async function sendMessagesToTokenEntries(coupleRef, tokenEntries, notification, kind) {
   if (tokenEntries.length === 0) {

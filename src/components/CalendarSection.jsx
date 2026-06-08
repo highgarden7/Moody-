@@ -105,10 +105,10 @@ export default function CalendarSection({
 
     try {
       await saveMood(coupleId, currentUser.uid, selectedDateKey, moodForm);
-      toast('컨디션을 저장했어.');
+      toast('무드를 저장했어.');
       setShowMoodForm(false);
     } catch (error) {
-      toast(error.message || '컨디션 저장에 실패했어.');
+      toast(error.message || '무드 저장에 실패했어.');
     } finally {
       setMoodBusy(false);
     }
@@ -292,55 +292,61 @@ export default function CalendarSection({
             )}
           </>
         ) : (
-          <div className="week-strip refined">
-            {visibleDays.map((date) => {
-              const dateKey = toDateInputValue(date);
-              const dayMoodData = moods[dateKey] || {};
-              const dayEvents = eventsForDate(events, date);
-              const isToday = isSameDay(date, new Date());
-              const isSelected = isSameDay(date, selectedDate);
+          <>
+            <div className="weekday-row">
+              {WEEKDAY_LABELS.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
+            </div>
+            <div className="week-strip refined">
+              {visibleDays.map((date) => {
+                const dateKey = toDateInputValue(date);
+                const dayMoodData = moods[dateKey] || {};
+                const dayEvents = eventsForDate(events, date);
+                const isToday = isSameDay(date, new Date());
+                const isSelected = isSameDay(date, selectedDate);
 
-              const myCondKey = dayMoodData[myUid]?.condition;
-              const partnerCondKey = partnerUid ? dayMoodData[partnerUid]?.condition : null;
-              const myColor = myCondKey ? (conditionByKey(myCondKey)?.color ?? CELL_BASE) : CELL_BASE;
-              const partnerColor = partnerCondKey
-                ? (conditionByKey(partnerCondKey)?.color ?? CELL_BASE)
-                : CELL_BASE;
+                const myCondKey = dayMoodData[myUid]?.condition;
+                const partnerCondKey = partnerUid ? dayMoodData[partnerUid]?.condition : null;
+                const myColor = myCondKey ? (conditionByKey(myCondKey)?.color ?? CELL_BASE) : CELL_BASE;
+                const partnerColor = partnerCondKey
+                  ? (conditionByKey(partnerCondKey)?.color ?? CELL_BASE)
+                  : CELL_BASE;
 
-              const dayEventOwners = [...new Set(dayEvents.map((e) => e.ownerUid))].slice(0, 2);
+                const dayEventOwners = [...new Set(dayEvents.map((e) => e.ownerUid))].slice(0, 2);
 
-              return (
-                <button
-                  className={[
-                    'week-compact-cell',
-                    'week-heatmap-cell',
-                    isToday ? 'ring-today' : '',
-                    isSelected ? 'ring-selected' : '',
-                  ].filter(Boolean).join(' ')}
-                  key={date.toISOString()}
-                  onClick={() => handleSelectDate(date)}
-                  style={{
-                    background: `linear-gradient(135deg, ${myColor} 0% 50%, ${partnerColor} 50% 100%)`
-                  }}
-                  type="button"
-                >
-                  <span className="week-weekday-label">{WEEKDAY_LABELS[date.getDay()]}</span>
-                  <span className="week-date-chip">{date.getDate()}</span>
-                  {dayEventOwners.length > 0 && (
-                    <span className="cell-dots-bottom">
-                      {dayEventOwners.map((uid) => (
-                        <span
-                          className="event-dot"
-                          key={uid}
-                          style={{ backgroundColor: ownerColors[uid] || '#d08b2f' }}
-                        />
-                      ))}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                return (
+                  <button
+                    className={[
+                      'calendar-date-cell',
+                      'heatmap-cell',
+                      isToday ? 'ring-today' : '',
+                      isSelected ? 'ring-selected' : '',
+                    ].filter(Boolean).join(' ')}
+                    key={date.toISOString()}
+                    onClick={() => handleSelectDate(date)}
+                    style={{
+                      background: `linear-gradient(135deg, ${myColor} 0% 50%, ${partnerColor} 50% 100%)`
+                    }}
+                    type="button"
+                  >
+                    <span className="date-chip">{date.getDate()}</span>
+                    {dayEventOwners.length > 0 && (
+                      <span className="cell-dots-bottom">
+                        {dayEventOwners.map((uid) => (
+                          <span
+                            className="event-dot"
+                            key={uid}
+                            style={{ backgroundColor: ownerColors[uid] || '#d08b2f' }}
+                          />
+                        ))}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </section>
 
@@ -349,7 +355,7 @@ export default function CalendarSection({
           <h3>{formatSelectedDate(selectedDate)}</h3>
         </div>
         {Object.entries(selectedDayMoods).length === 0 ? (
-          <p>아직 남긴 컨디션이 없어.</p>
+          <p>아직 남긴 무드가 없어.</p>
         ) : (
           <div className="mood-note-list">
             {Object.entries(selectedDayMoods).map(([uid, item]) => {
@@ -375,14 +381,14 @@ export default function CalendarSection({
 
       <section className="panel paper-card">
         <div className="summary-row summary-row-spread">
-          <h3>컨디션</h3>
+          <h3>오늘의 무드</h3>
           {showMoodForm ? (
             <button className="btn-secondary" onClick={() => setShowMoodForm(false)} type="button">
               닫기
             </button>
           ) : (
             <button className="btn-secondary" onClick={openMoodForm} type="button">
-              {myMood ? '컨디션 수정' : '+ 컨디션 추가'}
+              {myMood ? '무드 수정' : '무드 남기기'}
             </button>
           )}
         </div>
