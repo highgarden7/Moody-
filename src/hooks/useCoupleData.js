@@ -296,9 +296,16 @@ export async function removeDday(coupleId, ddayId) {
 
 export async function saveFcmToken(coupleId, uid, token) {
   ensureDb();
-  await updateDoc(doc(db, 'couples', coupleId), {
-    [`fcmTokens.${uid}`]: token
-  });
+  const ref = doc(db, 'couples', coupleId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('커플 문서를 찾을 수 없어.');
+
+  // fcmTokens 필드가 없으면 전체 맵으로 생성, 있으면 dot notation으로 해당 uid만 업데이트
+  const update = snap.data().fcmTokens
+    ? { [`fcmTokens.${uid}`]: token }
+    : { fcmTokens: { [uid]: token } };
+
+  await updateDoc(ref, update);
 }
 
 export async function removeFcmToken(coupleId, uid) {

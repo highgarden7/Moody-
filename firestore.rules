@@ -49,6 +49,7 @@ service cloud.firestore {
     function isOwnFcmTokenUpdate(coupleId) {
       return isCoupleMember(coupleId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmTokens'])
+        && request.resource.data.fcmTokens is map
         && (resource.data.fcmTokens is map
             ? request.resource.data.fcmTokens.diff(resource.data.fcmTokens).affectedKeys().hasOnly([request.auth.uid])
             : request.resource.data.fcmTokens.keys().hasOnly([request.auth.uid]));
