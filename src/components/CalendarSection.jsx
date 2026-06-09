@@ -456,11 +456,6 @@ export default function CalendarSection({
           {selectedDayEvents.length === 0 ? (
             <div className="event-empty">
               <p className="muted">아직 일정 없음</p>
-              {!showForm ? (
-                <button className="btn-secondary" onClick={openCreateForm} type="button">
-                  + 일정 추가
-                </button>
-              ) : null}
             </div>
           ) : (
             selectedDayEvents.map((item) => (
