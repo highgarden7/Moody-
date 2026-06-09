@@ -1,6 +1,6 @@
 import { deleteToken, getToken, onMessage } from 'firebase/messaging';
 import { useEffect, useMemo, useState } from 'react';
-import { getMessagingInstance, vapidKey } from '../firebase';
+import { auth, getMessagingInstance, vapidKey } from '../firebase';
 import { buildGenericPushMessage } from '../lib/pushMessage';
 import { removeFcmToken, saveFcmToken } from './useCoupleData';
 
@@ -180,6 +180,11 @@ export function usePushNotifications({ coupleId, uid, toast }) {
       const token = await getToken(messaging, await getTokenOptions());
       if (!token) {
         toast('알림 토큰을 받지 못했어.');
+        return;
+      }
+
+      if (!auth.currentUser) {
+        toast('세션이 만료됐어. 다시 로그인해줘.');
         return;
       }
 

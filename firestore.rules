@@ -46,18 +46,12 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']);
     }
 
-    function currentFcmTokens(coupleId) {
-      return resource.data.fcmTokens is map ? resource.data.fcmTokens : {};
-    }
-
-    function nextFcmTokens() {
-      return request.resource.data.fcmTokens is map ? request.resource.data.fcmTokens : {};
-    }
-
     function isOwnFcmTokenUpdate(coupleId) {
       return isCoupleMember(coupleId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmTokens'])
-        && nextFcmTokens().diff(currentFcmTokens(coupleId)).affectedKeys().hasOnly([request.auth.uid]);
+        && (resource.data.fcmTokens is map
+            ? request.resource.data.fcmTokens.diff(resource.data.fcmTokens).affectedKeys().hasOnly([request.auth.uid])
+            : request.resource.data.fcmTokens.keys().hasOnly([request.auth.uid]));
     }
 
     function bucketOpenToDone() {
