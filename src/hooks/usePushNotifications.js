@@ -28,9 +28,10 @@ async function getTokenOptions() {
       const registration = await navigator.serviceWorker.ready;
       if (registration) {
         options.serviceWorkerRegistration = registration;
+        console.debug('[push] SW registration found:', registration.scope);
       }
-    } catch {
-      // 등록을 못 가져오면 FCM 기본 동작으로 진행한다.
+    } catch (error) {
+      console.warn('[push] SW ready failed:', error);
     }
   }
 
@@ -119,8 +120,10 @@ export function usePushNotifications({ coupleId, uid, toast }) {
     let active = true;
 
     async function syncToken() {
+      console.debug('[push] syncToken start — uid:', uid, 'coupleId:', coupleId);
       const messaging = await getMessagingInstance();
       if (!active || !messaging) {
+        console.debug('[push] syncToken skip — messaging unavailable or unmounted');
         setEnabled(false);
         return;
       }
@@ -132,16 +135,20 @@ export function usePushNotifications({ coupleId, uid, toast }) {
         }
 
         if (!token) {
+          console.warn('[push] syncToken — getToken returned empty');
           setEnabled(false);
           return;
         }
 
+        console.debug('[push] syncToken — saving token, auth uid:', auth.currentUser?.uid);
         await saveFcmToken(coupleId, uid, token);
         if (active) {
+          console.debug('[push] syncToken success');
           setEnabled(true);
           setPermission('granted');
         }
-      } catch {
+      } catch (error) {
+        console.error('[push] syncToken failed — code:', error?.code, 'message:', error?.message, error);
         if (active) {
           setEnabled(false);
         }
@@ -162,7 +169,10 @@ export function usePushNotifications({ coupleId, uid, toast }) {
 
     setBusy(true);
     try {
+      console.debug('[push] enableNotifications start — uid:', uid, 'coupleId:', coupleId);
+
       const nextPermission = await Notification.requestPermission();
+      console.debug('[push] notification permission:', nextPermission);
       setPermission(nextPermission);
 
       if (nextPermission !== 'granted') {
@@ -173,26 +183,32 @@ export function usePushNotifications({ coupleId, uid, toast }) {
 
       const messaging = await getMessagingInstance();
       if (!messaging) {
+        console.warn('[push] messaging instance unavailable');
         toast('이 환경에서는 알림을 켤 수 없어.');
         return;
       }
 
       const token = await getToken(messaging, await getTokenOptions());
+      console.debug('[push] getToken result:', token ? `${token.slice(0, 20)}...` : 'empty');
       if (!token) {
         toast('알림 토큰을 받지 못했어.');
         return;
       }
 
-      if (!auth.currentUser) {
+      const currentUser = auth.currentUser;
+      console.debug('[push] auth.currentUser uid:', currentUser?.uid, '/ hook uid:', uid);
+      if (!currentUser) {
+        console.error('[push] auth.currentUser is null — session expired');
         toast('세션이 만료됐어. 다시 로그인해줘.');
         return;
       }
 
       await saveFcmToken(coupleId, uid, token);
+      console.debug('[push] saveFcmToken success');
       setEnabled(true);
       toast('알림을 켰어.');
     } catch (error) {
-      console.error('[push] enable failed', error);
+      console.error('[push] enable failed — code:', error?.code, 'message:', error?.message, error);
       const detail = error?.code || error?.message || String(error);
       toast(`알림 오류: ${detail}`);
     } finally {
