@@ -831,6 +831,12 @@ strong {
   font-size: 24px;
 }
 
+.note-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .counter-inline {
   font-size: 15px;
 }

@@ -1,4 +1,4 @@
-import { diffInDays, daysSince, startOfDay, formatFullDate } from './date';
+import { diffInDays, daysSince, formatFullDate, startOfDay } from './date';
 
 export function buildDdayItems(anniversary, ddays) {
   const items = [];
@@ -13,9 +13,10 @@ export function buildDdayItems(anniversary, ddays) {
     items.push({
       id: 'anniversary-start',
       label: '만난 날',
-      subtitle: `${formatFullDate(metDate)} · ${togetherDays}일째`,
+      subtitle: `${formatFullDate(metDate)}부터 ${togetherDays}일째`,
       counter: `D+${togetherDays - 1}`,
       targetDate: metDate,
+      isCustom: false
     });
     items.push({
       id: 'anniversary-next-100',
@@ -23,6 +24,7 @@ export function buildDdayItems(anniversary, ddays) {
       subtitle: formatFullDate(nextMilestoneDate),
       counter: formatCounter(nextMilestoneDate),
       targetDate: nextMilestoneDate,
+      isCustom: false
     });
   }
 
@@ -44,6 +46,23 @@ export function buildDdayItems(anniversary, ddays) {
         subtitle: formatFullDate(nextCycleDate),
         counter: formatCounter(nextCycleDate),
         targetDate: nextCycleDate,
+        isCustom: true,
+        originalItem: item
+      });
+      return;
+    }
+
+    if (item.repeatEvery === 'yearly') {
+      const nextYearlyDate = getNextYearlyDate(targetDate);
+
+      items.push({
+        id: item.id,
+        label,
+        subtitle: formatFullDate(nextYearlyDate),
+        counter: formatCounter(nextYearlyDate),
+        targetDate: nextYearlyDate,
+        isCustom: true,
+        originalItem: item
       });
       return;
     }
@@ -54,6 +73,8 @@ export function buildDdayItems(anniversary, ddays) {
       subtitle: item.repeatEvery === 'none' ? '고정 날짜' : item.repeatEvery,
       counter: formatCounter(targetDate),
       targetDate,
+      isCustom: true,
+      originalItem: item
     });
   });
 
@@ -72,4 +93,24 @@ function formatCounter(targetDate) {
   }
 
   return `D+${Math.abs(diff)}`;
+}
+
+function getNextYearlyDate(baseDate) {
+  const base = startOfDay(baseDate);
+  const today = startOfDay(new Date());
+  let year = today.getFullYear();
+  let candidate = createYearlyOccurrence(base, year);
+
+  if (candidate < today) {
+    candidate = createYearlyOccurrence(base, year + 1);
+  }
+
+  return candidate;
+}
+
+function createYearlyOccurrence(baseDate, year) {
+  const month = baseDate.getMonth();
+  const day = baseDate.getDate();
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(day, lastDayOfMonth));
 }

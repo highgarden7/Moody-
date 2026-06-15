@@ -563,17 +563,39 @@ function toUtcDayFromKey(dateKey) {
 }
 
 function getNextOccurrenceDate(baseDate, todayDate, repeatEvery) {
-  if (repeatEvery !== '100days') {
-    return baseDate;
+  if (repeatEvery === '100days') {
+    if (baseDate > todayDate) {
+      return baseDate;
+    }
+
+    const daysElapsed = Math.floor((todayDate.getTime() - baseDate.getTime()) / DAY_MS);
+    const cyclesPassed = Math.floor(daysElapsed / 100) + 1;
+    return addDays(baseDate, cyclesPassed * 100);
   }
 
-  if (baseDate > todayDate) {
-    return baseDate;
+  if (repeatEvery === 'yearly') {
+    return getNextYearlyOccurrenceDate(baseDate, todayDate);
   }
 
-  const daysElapsed = Math.floor((todayDate.getTime() - baseDate.getTime()) / DAY_MS);
-  const cyclesPassed = Math.floor(daysElapsed / 100) + 1;
-  return addDays(baseDate, cyclesPassed * 100);
+  return baseDate;
+}
+
+function getNextYearlyOccurrenceDate(baseDate, todayDate) {
+  const year = todayDate.getUTCFullYear();
+  let candidate = createUtcYearlyOccurrence(baseDate, year);
+
+  if (candidate < todayDate) {
+    candidate = createUtcYearlyOccurrence(baseDate, year + 1);
+  }
+
+  return candidate;
+}
+
+function createUtcYearlyOccurrence(baseDate, year) {
+  const month = baseDate.getUTCMonth();
+  const day = baseDate.getUTCDate();
+  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(year, month, Math.min(day, lastDayOfMonth)));
 }
 
 function addDays(date, days) {
